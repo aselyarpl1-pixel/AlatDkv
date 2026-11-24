@@ -1,10 +1,12 @@
 @import "tailwindcss";
 
+/* Mengatur warna utama website */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #1e293b;
 }
 
+/* Menghubungkan warna dan font dengan tema Tailwind */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -12,15 +14,61 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Mengatur tampilan dasar seluruh halaman */
+* {
+  box-sizing: border-box;
+}
+
+/* Mengatur tampilan body website */
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 body {
+  margin: 0;
+  min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Membuat gambar dan media menyesuaikan lebar wadah */
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Menghindari teks panjang merusak lebar tampilan */
+h1,
+h2,
+h3,
+p,
+a {
+  overflow-wrap: break-word;
+}
+
+/* Penyesuaian tampilan untuk tablet */
+@media (max-width: 768px) {
+  body {
+    font-size: 15px;
+  }
+
+  section {
+    scroll-margin-top: 20px;
+  }
+}
+
+/* Penyesuaian tampilan untuk HP */
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
 }
