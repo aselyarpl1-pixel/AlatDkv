@@ -28,12 +28,19 @@ async function periksaAdmin(): Promise<boolean> {
   // Mengambil email admin dari konfigurasi lingkungan
   const emailAdmin = process.env.ADMIN_EMAIL;
 
-  // Mengembalikan hasil pemeriksaan hak akses
+  // Memeriksa apakah email pengguna sesuai dengan email admin
   return Boolean(
     user &&
     emailAdmin &&
     user.email?.toLowerCase() === emailAdmin.toLowerCase(),
   );
+}
+
+// Memperbarui halaman setelah data peminjaman berubah
+function perbaruiHalaman() {
+  revalidatePath("/admin");
+  revalidatePath("/alat");
+  revalidatePath("/cek");
 }
 
 // Membuat fungsi untuk menyetujui pengajuan peminjaman
@@ -63,14 +70,67 @@ export async function setujuiPeminjaman(
   // Membuat koneksi Supabase khusus server
   const supabase = createAdminClient();
 
-  // Mengambil data pengajuan yang akan disetujui
+  // Mengubah status pengajuan menjadi disetujui
+  const { data, error } = await supabase
+    .from("peminjaman_alat")
+    .update({ status: "disetujui" })
+    .eq("id", id)
+    .eq("status", "menunggu")
+    .select("id")
+    .maybeSingle();
+
+  // Memeriksa hasil perubahan status
+  if (error || !data) {
+    return {
+      success: false,
+      message: "Pengajuan gagal disetujui atau sudah diproses.",
+    };
+  }
+
+  // Memperbarui halaman yang berkaitan dengan peminjaman
+  perbaruiHalaman();
+
+  return {
+    success: true,
+    message: "Pengajuan berhasil disetujui.",
+  };
+}
+
+// Membuat fungsi untuk menyerahkan alat kepada peminjam
+export async function serahkanPeminjaman(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  // Memeriksa hak akses admin
+  if (!(await periksaAdmin())) {
+    return {
+      success: false,
+      message: "Kamu tidak memiliki akses admin.",
+    };
+  }
+
+  // Mengambil ID pengajuan dari formulir
+  const id = Number(formData.get("id"));
+
+  // Memeriksa validitas ID
+  if (!Number.isInteger(id) || id <= 0) {
+    return {
+      success: false,
+      message: "ID pengajuan tidak valid.",
+    };
+  }
+
+  // Membuat koneksi Supabase khusus server
+  const supabase = createAdminClient();
+
+  // Mengambil data pengajuan yang sudah disetujui
   const { data: pengajuan, error: errorPengajuan } = await supabase
     .from("peminjaman_alat")
     .select("id, alat_id, jumlah, status")
     .eq("id", id)
     .maybeSingle();
 
-  // Memeriksa apakah pengajuan berhasil ditemukan
+  // Memeriksa apakah data pengajuan ditemukan
   if (errorPengajuan || !pengajuan) {
     return {
       success: false,
@@ -78,22 +138,22 @@ export async function setujuiPeminjaman(
     };
   }
 
-  // Memastikan pengajuan masih menunggu persetujuan
-  if (pengajuan.status !== "menunggu") {
+  // Memastikan pengajuan sudah disetujui
+  if (pengajuan.status !== "disetujui") {
     return {
       success: false,
-      message: "Pengajuan ini sudah diproses sebelumnya.",
+      message: "Pengajuan belum disetujui atau sudah diproses.",
     };
   }
 
-  // Mengambil informasi alat yang diajukan
+  // Mengambil informasi alat yang akan diserahkan
   const { data: alat, error: errorAlat } = await supabase
     .from("alat")
     .select("stok, aktif")
     .eq("id", pengajuan.alat_id)
     .maybeSingle();
 
-  // Memeriksa apakah alat tersedia dan masih aktif
+  // Memeriksa apakah alat masih aktif
   if (errorAlat || !alat || !alat.aktif) {
     return {
       success: false,
@@ -101,7 +161,7 @@ export async function setujuiPeminjaman(
     };
   }
 
-  // Mengambil peminjaman yang statusnya masih dipinjam
+  // Mengambil data alat yang sedang dipinjam
   const { data: peminjamanAktif, error: errorStok } = await supabase
     .from("peminjaman_alat")
     .select("jumlah")
@@ -122,10 +182,10 @@ export async function setujuiPeminjaman(
     0,
   );
 
-  // Menghitung stok alat yang masih tersedia
+  // Menghitung stok yang masih tersedia
   const stokTersedia = Math.max(0, alat.stok - totalDipinjam);
 
-  // Memeriksa apakah stok mencukupi untuk pengajuan
+  // Memeriksa apakah stok mencukupi
   if (pengajuan.jumlah > stokTersedia) {
     return {
       success: false,
@@ -133,12 +193,12 @@ export async function setujuiPeminjaman(
     };
   }
 
-  // Mengubah status pengajuan menjadi dipinjam
+  // Mengubah status menjadi dipinjam setelah alat diserahkan
   const { data: hasilUpdate, error: errorUpdate } = await supabase
     .from("peminjaman_alat")
     .update({ status: "dipinjam" })
     .eq("id", id)
-    .eq("status", "menunggu")
+    .eq("status", "disetujui")
     .select("id")
     .maybeSingle();
 
@@ -146,17 +206,16 @@ export async function setujuiPeminjaman(
   if (errorUpdate || !hasilUpdate) {
     return {
       success: false,
-      message: "Pengajuan gagal disetujui. Silakan periksa kembali.",
+      message: "Penyerahan alat gagal atau sudah diproses.",
     };
   }
 
-  // Memperbarui halaman dashboard admin
-  revalidatePath("/admin");
+  // Memperbarui halaman yang berkaitan dengan peminjaman
+  perbaruiHalaman();
 
-  // Mengembalikan pesan keberhasilan
   return {
     success: true,
-    message: "Pengajuan berhasil disetujui.",
+    message: "Alat berhasil diserahkan kepada peminjam.",
   };
 }
 
@@ -216,12 +275,84 @@ export async function tolakPeminjaman(
     };
   }
 
-  // Memperbarui halaman dashboard admin
-  revalidatePath("/admin");
+  // Memperbarui halaman yang berkaitan dengan peminjaman
+  perbaruiHalaman();
 
-  // Mengembalikan pesan keberhasilan
   return {
     success: true,
     message: "Pengajuan berhasil ditolak.",
+  };
+}
+
+// Membuat fungsi untuk memproses pengembalian alat
+export async function kembalikanPeminjaman(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  // Memeriksa hak akses admin
+  if (!(await periksaAdmin())) {
+    return {
+      success: false,
+      message: "Kamu tidak memiliki akses admin.",
+    };
+  }
+
+  // Mengambil ID dan kondisi alat dari formulir
+  const id = Number(formData.get("id"));
+  const kondisi = String(formData.get("kondisi") || "");
+
+  // Memeriksa validitas ID
+  if (!Number.isInteger(id) || id <= 0) {
+    return {
+      success: false,
+      message: "ID peminjaman tidak valid.",
+    };
+  }
+
+  // Memeriksa kondisi alat yang dipilih
+  const kondisiValid = ["baik", "rusak ringan", "rusak berat"];
+
+  if (!kondisiValid.includes(kondisi)) {
+    return {
+      success: false,
+      message: "Pilih kondisi alat yang valid.",
+    };
+  }
+
+  // Membuat koneksi Supabase khusus server
+  const supabase = createAdminClient();
+
+  // Mengambil tanggal hari ini berdasarkan zona waktu Indonesia
+  const tanggalKembali = new Date().toLocaleDateString("en-CA", {
+    timeZone: "Asia/Jakarta",
+  });
+
+  // Memperbarui status dan kondisi alat yang dikembalikan
+  const { data, error } = await supabase
+    .from("peminjaman_alat")
+    .update({
+      status: "dikembalikan",
+      kondisi_kembali: kondisi,
+      tgl_dikembalikan: tanggalKembali,
+    })
+    .eq("id", id)
+    .eq("status", "dipinjam")
+    .select("id")
+    .maybeSingle();
+
+  // Memeriksa hasil proses pengembalian
+  if (error || !data) {
+    return {
+      success: false,
+      message: "Pengembalian gagal atau alat sudah dikembalikan.",
+    };
+  }
+
+  // Memperbarui halaman yang berkaitan dengan peminjaman
+  perbaruiHalaman();
+
+  return {
+    success: true,
+    message: "Pengembalian alat berhasil diproses.",
   };
 }

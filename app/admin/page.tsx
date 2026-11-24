@@ -13,8 +13,11 @@ import { createClient } from "@/lib/supabase/server";
 // Mengimpor koneksi Supabase khusus server untuk mengambil data
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Mengimpor komponen untuk menyetujui dan menolak pengajuan
+// Mengimpor komponen aksi persetujuan, penolakan, dan penyerahan alat
 import FormAksiPeminjaman from "./FormAksiPeminjaman";
+
+// Mengimpor komponen formulir pengembalian alat
+import FormPengembalian from "./FormPengembalian";
 
 // Mengatur halaman agar tidak diproses sebagai halaman statis
 export const instant = false;
@@ -37,11 +40,23 @@ type Peminjaman = {
   } | null;
 };
 
+// Membuat daftar pilihan filter status
+const daftarStatus = [
+  { nilai: "semua", label: "Semua" },
+  { nilai: "menunggu", label: "Menunggu" },
+  { nilai: "disetujui", label: "Disetujui" },
+  { nilai: "dipinjam", label: "Dipinjam" },
+  { nilai: "dikembalikan", label: "Dikembalikan" },
+  { nilai: "ditolak", label: "Ditolak" },
+];
+
 // Membuat fungsi untuk menentukan warna status peminjaman
 function warnaStatus(status: string) {
   switch (status) {
     case "menunggu":
       return "bg-yellow-100 text-yellow-700";
+    case "disetujui":
+      return "bg-indigo-100 text-indigo-700";
     case "dipinjam":
       return "bg-blue-100 text-blue-700";
     case "dikembalikan":
@@ -53,10 +68,38 @@ function warnaStatus(status: string) {
   }
 }
 
+// Membuat fungsi untuk menampilkan nama status
+function namaStatus(status: string) {
+  switch (status) {
+    case "menunggu":
+      return "Menunggu";
+    case "disetujui":
+      return "Disetujui";
+    case "dipinjam":
+      return "Dipinjam";
+    case "dikembalikan":
+      return "Dikembalikan";
+    case "ditolak":
+      return "Ditolak";
+    default:
+      return status;
+  }
+}
+
 // Membuat halaman dashboard admin
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   // Memastikan halaman dijalankan saat ada permintaan pengguna
   await connection();
+
+  // Mengambil parameter filter dari URL
+  const params = await searchParams;
+  const statusAktif = daftarStatus.some((item) => item.nilai === params.status)
+    ? params.status || "semua"
+    : "semua";
 
   // Membuat koneksi Supabase untuk memeriksa pengguna yang login
   const supabase = await createClient();
@@ -108,23 +151,44 @@ export default async function AdminPage() {
   // Mengubah data hasil query menjadi tipe data peminjaman
   const daftarPeminjaman = (data || []) as unknown as Peminjaman[];
 
-  // Menghitung jumlah seluruh pengajuan
+  // Menghitung jumlah pengajuan berdasarkan status
   const totalPengajuan = daftarPeminjaman.length;
 
-  // Menghitung jumlah pengajuan yang masih menunggu
   const menunggu = daftarPeminjaman.filter(
     (item) => item.status === "menunggu",
   ).length;
 
-  // Menghitung jumlah alat yang sedang dipinjam
+  const disetujui = daftarPeminjaman.filter(
+    (item) => item.status === "disetujui",
+  ).length;
+
   const dipinjam = daftarPeminjaman.filter(
     (item) => item.status === "dipinjam",
   ).length;
 
-  // Menghitung jumlah alat yang sudah dikembalikan
   const dikembalikan = daftarPeminjaman.filter(
     (item) => item.status === "dikembalikan",
   ).length;
+
+  const ditolak = daftarPeminjaman.filter(
+    (item) => item.status === "ditolak",
+  ).length;
+
+  // Menyimpan jumlah setiap status untuk ditampilkan pada kartu
+  const jumlahStatus: Record<string, number> = {
+    semua: totalPengajuan,
+    menunggu,
+    disetujui,
+    dipinjam,
+    dikembalikan,
+    ditolak,
+  };
+
+  // Menyaring data sesuai kategori status yang dipilih
+  const dataTampil =
+    statusAktif === "semua"
+      ? daftarPeminjaman
+      : daftarPeminjaman.filter((item) => item.status === statusAktif);
 
   return (
     // Bagian utama halaman dashboard admin
@@ -163,7 +227,7 @@ export default async function AdminPage() {
         )}
 
         {/* Bagian ringkasan jumlah pengajuan */}
-        <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {/* Kartu total pengajuan */}
           <div className="rounded-2xl bg-white p-6 shadow-sm">
             <p className="text-sm text-gray-500">Total Pengajuan</p>
@@ -177,6 +241,14 @@ export default async function AdminPage() {
             <p className="text-sm text-gray-500">Menunggu</p>
             <h2 className="mt-3 text-3xl font-bold text-yellow-600">
               {menunggu}
+            </h2>
+          </div>
+
+          {/* Kartu pengajuan disetujui */}
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <p className="text-sm text-gray-500">Disetujui</p>
+            <h2 className="mt-3 text-3xl font-bold text-indigo-600">
+              {disetujui}
             </h2>
           </div>
 
@@ -195,6 +267,12 @@ export default async function AdminPage() {
               {dikembalikan}
             </h2>
           </div>
+
+          {/* Kartu pengajuan yang ditolak */}
+          <div className="rounded-2xl bg-white p-6 shadow-sm">
+            <p className="text-sm text-gray-500">Ditolak</p>
+            <h2 className="mt-3 text-3xl font-bold text-red-600">{ditolak}</h2>
+          </div>
         </div>
 
         {/* Bagian daftar pengajuan peminjaman */}
@@ -206,8 +284,30 @@ export default async function AdminPage() {
             </h2>
 
             <p className="mt-1 text-sm text-gray-500">
-              Semua pengajuan yang masuk ke sistem.
+              Pilih kategori untuk melihat pengajuan berdasarkan status.
             </p>
+          </div>
+
+          {/* Menu filter kategori status */}
+          <div className="flex flex-wrap gap-2 border-b border-gray-100 p-5">
+            {daftarStatus.map((item) => (
+              <Link
+                key={item.nilai}
+                href={
+                  item.nilai === "semua"
+                    ? "/admin"
+                    : `/admin?status=${item.nilai}`
+                }
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                  statusAktif === item.nilai
+                    ? "bg-green-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {item.label}
+                <span className="ml-2">({jumlahStatus[item.nilai]})</span>
+              </Link>
+            ))}
           </div>
 
           {/* Membuat tabel dapat digeser pada layar kecil */}
@@ -229,9 +329,9 @@ export default async function AdminPage() {
 
               {/* Bagian isi tabel */}
               <tbody className="divide-y divide-gray-100">
-                {/* Memeriksa apakah terdapat data pengajuan */}
-                {daftarPeminjaman.length > 0 ? (
-                  daftarPeminjaman.map((item, index) => (
+                {/* Memeriksa apakah terdapat data sesuai filter */}
+                {dataTampil.length > 0 ? (
+                  dataTampil.map((item, index) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       {/* Nomor urut dan ID pengajuan */}
                       <td className="px-6 py-4">
@@ -249,9 +349,14 @@ export default async function AdminPage() {
                         <p className="text-xs text-gray-500">{item.kelas}</p>
                       </td>
 
-                      {/* Nama alat yang dipinjam */}
+                      {/* Nama dan kategori alat */}
                       <td className="px-6 py-4 text-gray-700">
-                        {item.alat?.nama || "Alat tidak ditemukan"}
+                        <p className="font-semibold">
+                          {item.alat?.nama || "Alat tidak ditemukan"}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {item.alat?.kategori || "-"}
+                        </p>
                       </td>
 
                       {/* Jumlah alat yang diajukan */}
@@ -276,7 +381,7 @@ export default async function AdminPage() {
                             item.status,
                           )}`}
                         >
-                          {item.status}
+                          {namaStatus(item.status)}
                         </span>
 
                         {/* Menampilkan alasan jika pengajuan ditolak */}
@@ -287,13 +392,20 @@ export default async function AdminPage() {
                         )}
                       </td>
 
-                      {/* Kolom untuk menyetujui atau menolak pengajuan */}
+                      {/* Kolom aksi sesuai status pengajuan */}
                       <td className="px-6 py-4">
-                        {item.status === "menunggu" ? (
-                          // Menampilkan formulir aksi untuk pengajuan yang menunggu
-                          <FormAksiPeminjaman id={item.id} />
+                        {item.status === "menunggu" ||
+                        item.status === "disetujui" ? (
+                          // Menampilkan aksi persetujuan, penolakan, atau penyerahan
+                          <FormAksiPeminjaman
+                            id={item.id}
+                            status={item.status}
+                          />
+                        ) : item.status === "dipinjam" ? (
+                          // Menampilkan formulir pengembalian alat
+                          <FormPengembalian id={item.id} />
                         ) : (
-                          // Menampilkan keterangan jika pengajuan sudah diproses
+                          // Menampilkan keterangan jika sudah selesai
                           <span className="text-xs text-gray-400">
                             Sudah diproses
                           </span>
@@ -302,13 +414,13 @@ export default async function AdminPage() {
                     </tr>
                   ))
                 ) : (
-                  // Menampilkan pesan jika belum ada pengajuan
+                  // Menampilkan pesan jika kategori belum memiliki data
                   <tr>
                     <td
                       colSpan={8}
                       className="px-6 py-12 text-center text-gray-500"
                     >
-                      Belum ada pengajuan peminjaman.
+                      Belum ada pengajuan pada kategori ini.
                     </td>
                   </tr>
                 )}

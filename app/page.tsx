@@ -17,6 +17,15 @@ type Alat = {
   aktif: boolean;
 };
 
+// Menyimpan daftar kategori alat yang tersedia
+const kategoriAlat = [
+  { nama: "Kamera", nilai: "kamera", ikon: "📷" },
+  { nama: "Pencahayaan", nilai: "pencahayaan", ikon: "💡" },
+  { nama: "Audio", nilai: "audio", ikon: "🎙️" },
+  { nama: "Tablet", nilai: "tablet", ikon: "📱" },
+  { nama: "Aksesori", nilai: "aksesori", ikon: "🎒" },
+];
+
 // Halaman utama aplikasi AlatDKV
 export default async function Home() {
   // Membuat koneksi ke database Supabase
@@ -37,7 +46,6 @@ export default async function Home() {
       <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
         <div className="rounded-xl bg-white p-8 text-center shadow-sm">
           <h1 className="text-xl font-bold text-red-600">Data gagal dimuat</h1>
-
           <p className="mt-2 text-sm text-slate-600">
             Silakan coba kembali beberapa saat lagi.
           </p>
@@ -59,24 +67,27 @@ export default async function Home() {
     <main className="min-h-screen bg-slate-50 text-slate-800">
       {/* Bagian navigasi website */}
       <nav className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
           {/* Logo dan nama aplikasi */}
           <div>
             <h1 className="text-2xl font-bold text-blue-900">AlatDKV</h1>
-
             <p className="text-xs text-slate-500">
               Sistem Peminjaman Alat Laboratorium DKV
             </p>
           </div>
 
-          {/* Menu navigasi menggunakan Link Next.js */}
-          <div className="flex gap-6 text-sm font-medium">
+          {/* Menu navigasi utama */}
+          <div className="flex flex-wrap items-center gap-5 text-sm font-medium">
             <Link href="/" className="text-blue-700">
               Beranda
             </Link>
 
             <Link href="/alat" className="transition hover:text-blue-700">
               Daftar Alat
+            </Link>
+
+            <Link href="/ajukan" className="transition hover:text-blue-700">
+              Ajukan Peminjaman
             </Link>
 
             <Link href="/cek" className="transition hover:text-blue-700">
@@ -107,12 +118,21 @@ export default async function Home() {
           </p>
 
           {/* Tombol menuju halaman daftar alat */}
-          <Link
-            href="/alat"
-            className="mt-8 inline-block rounded-lg bg-white px-6 py-3 font-semibold text-blue-900 transition hover:bg-blue-100"
-          >
-            Lihat Daftar Alat
-          </Link>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/alat"
+              className="rounded-lg bg-white px-6 py-3 font-semibold text-blue-900 transition hover:bg-blue-100"
+            >
+              Lihat Daftar Alat
+            </Link>
+
+            <Link
+              href="/ajukan"
+              className="rounded-lg border border-white px-6 py-3 font-semibold text-white transition hover:bg-blue-800"
+            >
+              Ajukan Peminjaman
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -121,9 +141,7 @@ export default async function Home() {
         {/* Menampilkan jumlah jenis alat aktif */}
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Jenis Alat Aktif</p>
-
           <h3 className="mt-2 text-3xl font-bold text-blue-900">{totalAlat}</h3>
-
           <p className="mt-1 text-sm text-slate-500">
             Jenis peralatan tersedia
           </p>
@@ -132,29 +150,78 @@ export default async function Home() {
         {/* Menampilkan jumlah keseluruhan stok alat */}
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Total Stok Alat</p>
-
           <h3 className="mt-2 text-3xl font-bold text-blue-900">{totalStok}</h3>
-
           <p className="mt-1 text-sm text-slate-500">
             Unit dari seluruh alat aktif
           </p>
         </div>
       </section>
 
+      {/* Bagian kategori alat */}
+      <section className="mx-auto max-w-7xl px-6 pb-10">
+        <div className="mb-6">
+          <p className="text-sm font-semibold uppercase tracking-wider text-blue-700">
+            Kategori Peralatan
+          </p>
+          <h2 className="mt-2 text-3xl font-bold text-slate-900">
+            Jelajahi Berdasarkan Kategori
+          </h2>
+          <p className="mt-2 text-slate-500">
+            Pilih kategori untuk melihat peralatan laboratorium yang tersedia.
+          </p>
+        </div>
+
+        {/* Menampilkan pilihan kategori dalam bentuk kartu */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {kategoriAlat.map((kategori) => {
+            // Menghitung jumlah alat pada setiap kategori
+            const jumlah = daftarAlat.filter(
+              (item) => item.kategori === kategori.nilai,
+            ).length;
+
+            return (
+              <Link
+                key={kategori.nilai}
+                href={`/alat?kategori=${kategori.nilai}`}
+                className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md"
+              >
+                <div className="text-3xl">{kategori.ikon}</div>
+
+                <h3 className="mt-4 font-bold text-slate-900">
+                  {kategori.nama}
+                </h3>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  {jumlah} jenis alat
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
       {/* Bagian daftar alat yang diambil dari Supabase */}
       <section className="mx-auto max-w-7xl px-6 pb-16">
-        <div className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-wider text-blue-700">
-            Katalog Peralatan
-          </p>
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wider text-blue-700">
+              Katalog Peralatan
+            </p>
+            <h2 className="mt-2 text-3xl font-bold text-slate-900">
+              Alat Laboratorium
+            </h2>
+            <p className="mt-2 text-slate-500">
+              Berikut peralatan yang dapat dipinjam.
+            </p>
+          </div>
 
-          <h2 className="mt-2 text-3xl font-bold text-slate-900">
-            Alat Laboratorium
-          </h2>
-
-          <p className="mt-2 text-slate-500">
-            Berikut peralatan yang dapat dipinjam.
-          </p>
+          {/* Link untuk melihat seluruh daftar alat */}
+          <Link
+            href="/alat"
+            className="text-sm font-semibold text-blue-700 hover:text-blue-900"
+          >
+            Lihat Semua Alat →
+          </Link>
         </div>
 
         {/* Memeriksa apakah data alat tersedia */}
@@ -209,7 +276,7 @@ export default async function Home() {
                 </div>
 
                 {/* Menampilkan status ketersediaan alat */}
-                <div className="mt-4">
+                <div className="mt-4 flex items-center justify-between">
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
                       item.stok > 0
@@ -219,6 +286,14 @@ export default async function Home() {
                   >
                     {item.stok > 0 ? "Tersedia" : "Stok Habis"}
                   </span>
+
+                  {/* Link menuju halaman detail alat */}
+                  <Link
+                    href={`/alat/${item.id}`}
+                    className="text-sm font-semibold text-blue-700 hover:text-blue-900"
+                  >
+                    Detail →
+                  </Link>
                 </div>
               </div>
             ))}

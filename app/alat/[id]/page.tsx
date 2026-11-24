@@ -1,11 +1,16 @@
+// Mengimpor Link untuk navigasi antarhalaman Next.js
 import Link from "next/link";
+
+// Mengimpor notFound untuk menampilkan halaman 404
 import { notFound } from "next/navigation";
+
+// Mengimpor koneksi Supabase khusus server
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Mengizinkan halaman mengambil data secara dinamis
 export const instant = false;
 
-// Tipe data alat
+// Membuat tipe data alat
 type Alat = {
   id: number;
   nama: string;
@@ -15,7 +20,7 @@ type Alat = {
   aktif: boolean;
 };
 
-// Tipe data peminjaman
+// Membuat tipe data peminjaman
 type Peminjaman = {
   jumlah: number;
 };
@@ -25,6 +30,22 @@ function formatKategori(kategori: string) {
   return kategori
     .replaceAll("_", " ")
     .replace(/\b\w/g, (huruf) => huruf.toUpperCase());
+}
+
+// Menentukan ikon berdasarkan kategori alat
+function ikonKategori(kategori: string) {
+  switch (kategori) {
+    case "kamera":
+      return "📷";
+    case "pencahayaan":
+      return "💡";
+    case "audio":
+      return "🎙️";
+    case "tablet":
+      return "📱";
+    default:
+      return "🎒";
+  }
 }
 
 // Halaman detail alat
@@ -51,16 +72,18 @@ export default async function DetailAlat({
     .eq("id", Number(id))
     .maybeSingle();
 
-  // Menampilkan halaman tidak ditemukan jika alat tidak ada
+  // Memeriksa kesalahan pengambilan data alat
   if (alatError) {
     console.error("Gagal mengambil detail alat:", alatError.message);
     throw new Error("Gagal mengambil data alat.");
   }
 
+  // Menampilkan halaman tidak ditemukan jika alat tidak ada
   if (!alatData) {
     notFound();
   }
 
+  // Mengubah data menjadi tipe Alat
   const alat = alatData as Alat;
 
   // Alat yang tidak aktif tidak dapat diajukan
@@ -81,7 +104,6 @@ export default async function DetailAlat({
       "Gagal menghitung stok yang dipinjam:",
       peminjamanError.message,
     );
-
     throw new Error("Gagal menghitung stok alat.");
   }
 
@@ -98,29 +120,36 @@ export default async function DetailAlat({
   const bisaDiajukan = stokTersedia > 0;
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      {/* Navigasi halaman */}
+    <main className="min-h-screen bg-slate-50 text-slate-800">
+      {/* Navigasi website */}
       <nav className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-xl font-bold text-blue-700">
-            AlatDKV
-          </Link>
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+          {/* Logo dan nama aplikasi */}
+          <div>
+            <Link href="/" className="text-2xl font-bold text-blue-900">
+              AlatDKV
+            </Link>
+            <p className="text-xs text-slate-500">
+              Sistem Peminjaman Alat Laboratorium DKV
+            </p>
+          </div>
 
-          <div className="flex flex-wrap gap-5 text-sm font-medium text-slate-600">
-            <Link href="/" className="hover:text-blue-700">
+          {/* Menu navigasi utama */}
+          <div className="flex flex-wrap items-center gap-5 text-sm font-medium">
+            <Link href="/" className="transition hover:text-blue-700">
               Beranda
             </Link>
-
             <Link href="/alat" className="text-blue-700">
               Daftar Alat
             </Link>
-
-            <Link href="/cek" className="hover:text-blue-700">
-              Cek Peminjaman
+            <Link href="/ajukan" className="transition hover:text-blue-700">
+              Ajukan Peminjaman
             </Link>
-
-            <Link href="/login" className="hover:text-blue-700">
-              Login Admin
+            <Link href="/cek" className="transition hover:text-blue-700">
+              Cek Status
+            </Link>
+            <Link href="/login" className="transition hover:text-blue-700">
+              Admin
             </Link>
           </div>
         </div>
@@ -140,8 +169,7 @@ export default async function DetailAlat({
           {/* Informasi utama alat */}
           <div className="flex min-h-72 items-center justify-center rounded-3xl bg-linear-to-br from-blue-100 to-slate-200 p-10">
             <div className="text-center">
-              <div className="text-7xl">📷</div>
-
+              <div className="text-7xl">{ikonKategori(alat.kategori)}</div>
               <p className="mt-5 text-sm font-medium uppercase tracking-widest text-blue-700">
                 Laboratorium DKV
               </p>
@@ -166,28 +194,23 @@ export default async function DetailAlat({
             <div className="mt-8 grid grid-cols-2 gap-4">
               <div className="rounded-2xl bg-slate-50 p-5">
                 <p className="text-sm text-slate-500">Stok Awal</p>
-
                 <p className="mt-2 text-2xl font-bold text-slate-800">
                   {alat.stok}
                 </p>
-
                 <p className="mt-1 text-xs text-slate-400">Unit</p>
               </div>
 
               <div className="rounded-2xl bg-blue-50 p-5">
                 <p className="text-sm text-blue-600">Stok Tersedia</p>
-
                 <p className="mt-2 text-2xl font-bold text-blue-700">
                   {stokTersedia}
                 </p>
-
                 <p className="mt-1 text-xs text-blue-500">Unit</p>
               </div>
 
               <div className="col-span-2 rounded-2xl bg-slate-50 p-5">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-slate-500">Sedang Dipinjam</p>
-
                   <p className="font-bold text-slate-800">
                     {totalDipinjam} unit
                   </p>

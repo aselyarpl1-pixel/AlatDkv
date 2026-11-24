@@ -1,10 +1,10 @@
 // Mengimpor Link untuk navigasi antarhalaman Next.js
 import Link from "next/link";
 
-// Mengimpor koneksi Supabase khusus server
+// Mengimpor createAdminClient untuk mengakses database Supabase
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Mengizinkan halaman menunggu data dinamis sebelum ditampilkan
+// Mengizinkan halaman mengambil data secara dinamis
 export const instant = false;
 
 // Membuat tipe data alat sesuai tabel Supabase
@@ -29,6 +29,16 @@ type AlatDenganStok = Alat & {
   stokTersedia: number;
 };
 
+// Menyimpan daftar kategori yang tersedia
+const kategoriAlat = [
+  { nama: "Semua", nilai: "semua", ikon: "📦" },
+  { nama: "Kamera", nilai: "kamera", ikon: "📷" },
+  { nama: "Pencahayaan", nilai: "pencahayaan", ikon: "💡" },
+  { nama: "Audio", nilai: "audio", ikon: "🎙️" },
+  { nama: "Tablet", nilai: "tablet", ikon: "📱" },
+  { nama: "Aksesori", nilai: "aksesori", ikon: "🎒" },
+];
+
 // Mengubah kategori menjadi tulisan yang lebih rapi
 function formatKategori(kategori: string) {
   return kategori
@@ -37,11 +47,27 @@ function formatKategori(kategori: string) {
 }
 
 // Halaman daftar alat laboratorium
-export default async function DaftarAlat() {
+export default async function DaftarAlat({
+  searchParams,
+}: {
+  searchParams: Promise<{ kategori?: string }>;
+}) {
+  // Mengambil kategori yang dipilih dari URL
+  const params = await searchParams;
+  const kategoriDipilih = params.kategori ?? "semua";
+
+  // Memeriksa apakah kategori sesuai dengan daftar yang tersedia
+  const kategoriValid = kategoriAlat.some(
+    (item) => item.nilai === kategoriDipilih,
+  );
+
+  // Menggunakan kategori Semua jika kategori tidak valid
+  const kategoriAktif = kategoriValid ? kategoriDipilih : "semua";
+
   // Membuat koneksi ke database Supabase
   const supabase = createAdminClient();
 
-  // Mengambil semua alat yang masih aktif dan mengurutkan berdasarkan ID
+  // Mengambil semua alat yang masih aktif
   const { data: alat, error: errorAlat } = await supabase
     .from("alat")
     .select("id, nama, kategori, stok, keterangan, aktif")
@@ -58,7 +84,6 @@ export default async function DaftarAlat() {
           <h1 className="text-xl font-bold text-red-600">
             Data alat gagal dimuat
           </h1>
-
           <p className="mt-2 text-sm text-slate-600">
             Silakan coba kembali beberapa saat lagi.
           </p>
@@ -86,7 +111,6 @@ export default async function DaftarAlat() {
           <h1 className="text-xl font-bold text-red-600">
             Stok alat gagal dimuat
           </h1>
-
           <p className="mt-2 text-sm text-slate-600">
             Silakan coba kembali beberapa saat lagi.
           </p>
@@ -109,10 +133,7 @@ export default async function DaftarAlat() {
 
   // Menggabungkan data alat dengan perhitungan stok tersedia
   const daftarAlatDenganStok: AlatDenganStok[] = daftarAlat.map((item) => {
-    // Mengambil jumlah alat yang sedang dipinjam
     const stokDipinjam = totalDipinjam.get(item.id) ?? 0;
-
-    // Menghitung stok yang masih tersedia
     const stokTersedia = Math.max(0, item.stok - stokDipinjam);
 
     return {
@@ -131,36 +152,41 @@ export default async function DaftarAlat() {
     0,
   );
 
+  // Memfilter alat berdasarkan kategori yang dipilih
+  const alatDitampilkan =
+    kategoriAktif === "semua"
+      ? daftarAlatDenganStok
+      : daftarAlatDenganStok.filter((item) => item.kategori === kategoriAktif);
+
   return (
     <main className="min-h-screen bg-slate-50 text-slate-800">
       {/* Bagian navigasi website */}
       <nav className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
           {/* Logo dan nama aplikasi */}
           <div>
             <Link href="/" className="text-2xl font-bold text-blue-900">
               AlatDKV
             </Link>
-
             <p className="text-xs text-slate-500">
               Sistem Peminjaman Alat Laboratorium DKV
             </p>
           </div>
 
-          {/* Menu navigasi menggunakan Link Next.js */}
-          <div className="flex flex-wrap gap-6 text-sm font-medium">
+          {/* Menu navigasi utama */}
+          <div className="flex flex-wrap items-center gap-5 text-sm font-medium">
             <Link href="/" className="transition hover:text-blue-700">
               Beranda
             </Link>
-
             <Link href="/alat" className="text-blue-700">
               Daftar Alat
             </Link>
-
+            <Link href="/ajukan" className="transition hover:text-blue-700">
+              Ajukan Peminjaman
+            </Link>
             <Link href="/cek" className="transition hover:text-blue-700">
               Cek Status
             </Link>
-
             <Link href="/login" className="transition hover:text-blue-700">
               Admin
             </Link>
@@ -174,9 +200,7 @@ export default async function DaftarAlat() {
           <p className="text-sm font-semibold uppercase tracking-widest text-blue-200">
             Katalog Laboratorium
           </p>
-
           <h2 className="mt-3 text-4xl font-bold">Daftar Alat DKV</h2>
-
           <p className="mt-4 max-w-2xl leading-relaxed text-blue-100">
             Temukan berbagai peralatan laboratorium DKV yang tersedia untuk
             mendukung kegiatan praktik dan pembelajaran.
@@ -186,18 +210,48 @@ export default async function DaftarAlat() {
 
       {/* Bagian ringkasan alat */}
       <section className="mx-auto grid max-w-7xl gap-5 px-6 py-10 sm:grid-cols-2">
-        {/* Menampilkan jumlah jenis alat aktif */}
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Jumlah Jenis Alat</p>
-
           <h3 className="mt-2 text-3xl font-bold text-blue-900">{totalAlat}</h3>
         </div>
 
-        {/* Menampilkan jumlah seluruh stok awal alat */}
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Total Stok Alat</p>
-
           <h3 className="mt-2 text-3xl font-bold text-blue-900">{totalStok}</h3>
+        </div>
+      </section>
+
+      {/* Bagian filter kategori alat */}
+      <section className="mx-auto max-w-7xl px-6 pb-8">
+        <div className="mb-5">
+          <h2 className="text-2xl font-bold text-slate-900">
+            Kategori Peralatan
+          </h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Pilih kategori untuk melihat alat sesuai jenisnya.
+          </p>
+        </div>
+
+        {/* Menampilkan tombol pilihan kategori */}
+        <div className="flex flex-wrap gap-3">
+          {kategoriAlat.map((kategori) => (
+            <Link
+              key={kategori.nilai}
+              href={
+                kategori.nilai === "semua"
+                  ? "/alat"
+                  : `/alat?kategori=${kategori.nilai}`
+              }
+              className={`rounded-xl border px-5 py-3 text-sm font-semibold transition ${
+                kategoriAktif === kategori.nilai
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-blue-400 hover:text-blue-700"
+              }`}
+            >
+              <span className="mr-2">{kategori.ikon}</span>
+              {kategori.nama}
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -205,25 +259,32 @@ export default async function DaftarAlat() {
       <section className="mx-auto max-w-7xl px-6 pb-16">
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-slate-900">
-            Katalog Peralatan
+            {kategoriAktif === "semua"
+              ? "Semua Peralatan"
+              : `Kategori ${formatKategori(kategoriAktif)}`}
           </h2>
-
           <p className="mt-2 text-sm text-slate-500">
-            Berikut daftar peralatan laboratorium yang dapat dipinjam.
+            Menampilkan {alatDitampilkan.length} jenis alat.
           </p>
         </div>
 
-        {/* Memeriksa apakah data alat tersedia */}
-        {daftarAlatDenganStok.length === 0 ? (
+        {/* Memeriksa apakah alat pada kategori tersedia */}
+        {alatDitampilkan.length === 0 ? (
           <div className="rounded-xl border border-slate-200 bg-white p-10 text-center">
             <p className="font-medium text-slate-600">
-              Belum ada alat yang tersedia.
+              Belum ada alat pada kategori ini.
             </p>
+            <Link
+              href="/alat"
+              className="mt-4 inline-block font-semibold text-blue-700 hover:text-blue-900"
+            >
+              Lihat Semua Alat
+            </Link>
           </div>
         ) : (
           /* Menampilkan data alat dalam bentuk kartu */
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {daftarAlatDenganStok.map((item) => (
+            {alatDitampilkan.map((item) => (
               <div
                 key={item.id}
                 className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg"
@@ -245,7 +306,6 @@ export default async function DaftarAlat() {
                 <h3 className="text-xl font-bold text-slate-900">
                   {item.nama}
                 </h3>
-
                 <p className="mt-1 text-sm text-slate-500">
                   {formatKategori(item.kategori)}
                 </p>
@@ -258,7 +318,6 @@ export default async function DaftarAlat() {
                 {/* Menampilkan jumlah stok tersedia */}
                 <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
                   <span className="text-sm text-slate-500">Stok tersedia</span>
-
                   <span className="font-bold text-blue-900">
                     {item.stokTersedia} unit
                   </span>
@@ -269,7 +328,6 @@ export default async function DaftarAlat() {
                   <span className="text-sm text-slate-500">
                     Sedang dipinjam
                   </span>
-
                   <span className="text-sm font-semibold text-slate-700">
                     {item.stokDipinjam} unit
                   </span>
