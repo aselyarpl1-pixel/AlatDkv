@@ -19,21 +19,18 @@ type Peminjaman = {
 };
 
 // Mengambil tanggal hari ini berdasarkan waktu Indonesia
-function tanggalMinimal(): string {
-  const bagian = new Intl.DateTimeFormat("en-CA", {
+function tanggalHariIni(): string {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jakarta",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).formatToParts(new Date());
+  }).format(new Date());
+}
 
-  const tahun = bagian.find((item) => item.type === "year")?.value;
-  const bulan = bagian.find((item) => item.type === "month")?.value;
-  const hari = bagian.find((item) => item.type === "day")?.value;
-
-  const hariIni = `${tahun}-${bulan}-${hari}`;
-
-  // Menambahkan 14 hari dari tanggal hari ini
+// Menghitung tanggal maksimal (hari ini + 14 hari)
+function tanggalMaksimal(): string {
+  const hariIni = tanggalHariIni();
   const [y, m, d] = hariIni.split("-").map(Number);
   const hasil = new Date(Date.UTC(y, m - 1, d + 14));
 
@@ -161,7 +158,8 @@ export default async function AjukanPeminjaman() {
           <div className="mt-8">
             <FormPengajuan
               daftarAlat={alatDenganStok}
-              minimalTanggal={tanggalMinimal()}
+              minimalTanggal={tanggalHariIni()}
+              maksimalTanggal={tanggalMaksimal()}
             />
           </div>
         </div>
@@ -171,7 +169,7 @@ export default async function AjukanPeminjaman() {
           <h3 className="font-bold text-blue-900">Ketentuan Peminjaman</h3>
 
           <ul className="mt-3 list-inside list-disc space-y-2 text-sm text-blue-800">
-            <li>Tanggal pinjam minimal 14 hari dari hari ini.</li>
+            <li>Tanggal pinjam hari ini sampai maksimal 14 hari ke depan.</li>
             <li>Peminjaman hanya pada hari Senin sampai Jumat.</li>
             <li>Lama peminjaman maksimal 3 hari.</li>
             <li>Jumlah peminjaman antara 1 sampai 5 unit.</li>

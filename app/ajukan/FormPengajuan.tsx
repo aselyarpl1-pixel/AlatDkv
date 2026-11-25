@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { ajukanPeminjaman, type FormState } from "./actions";
+import { ajukanPeminjaman, type FormState, type NilaiForm } from "./actions";
 
 // Tipe data alat untuk pilihan formulir
 type AlatPilihan = {
@@ -10,19 +10,34 @@ type AlatPilihan = {
   stokTersedia: number;
 };
 
+// Nilai awal formulir (kosong)
+const nilaiAwal: NilaiForm = {
+  alat_id: "",
+  peminjam: "",
+  kelas: "",
+  keperluan: "",
+  jumlah: "1",
+  tgl_pinjam: "",
+  tgl_kembali: "",
+};
+
 // Nilai awal hasil pengajuan
 const initialState: FormState = {
   success: false,
   message: "",
+  errors: {},
+  values: nilaiAwal,
 };
 
 // Komponen formulir pengajuan peminjaman
 export default function FormPengajuan({
   daftarAlat,
   minimalTanggal,
+  maksimalTanggal,
 }: {
   daftarAlat: AlatPilihan[];
   minimalTanggal: string;
+  maksimalTanggal: string;
 }) {
   // Menghubungkan formulir dengan proses server action
   const [state, formAction, sedangMengirim] = useActionState(
@@ -30,8 +45,41 @@ export default function FormPengajuan({
     initialState,
   );
 
+  // Mengambil nilai dan galat dari state (pakai nilai awal jika belum ada)
+  const nilai = state.values || nilaiAwal;
+  const galat = state.errors || {};
+
+  // Membuat kelas border berdasarkan ada/tidaknya galat
+  const kelasBorder = (adaGalat: boolean) =>
+    adaGalat
+      ? "border-red-500 focus:border-red-500"
+      : "border-slate-300 focus:border-blue-500";
+
   return (
-    <form action={formAction} className="space-y-6">
+    <form
+      action={formAction}
+      key={JSON.stringify(nilai)}
+      className="space-y-6"
+    >
+      {/* Pesan umum jika ada galat atau berhasil */}
+      {state.message && !state.success && (
+        <div
+          role="status"
+          className="rounded-xl bg-red-100 p-4 text-sm font-medium text-red-700"
+        >
+          {state.message}
+        </div>
+      )}
+
+      {state.success && state.message && (
+        <div
+          role="status"
+          className="rounded-xl bg-green-100 p-4 text-sm font-medium text-green-700"
+        >
+          {state.message}
+        </div>
+      )}
+
       {/* Pilihan alat */}
       <div>
         <label htmlFor="alat_id" className="mb-2 block text-sm font-semibold">
@@ -42,8 +90,10 @@ export default function FormPengajuan({
           id="alat_id"
           name="alat_id"
           required
-          defaultValue=""
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:border-blue-500"
+          defaultValue={nilai.alat_id}
+          className={`w-full rounded-xl border bg-white px-4 py-3 outline-none ${kelasBorder(
+            !!galat.alat_id,
+          )}`}
         >
           <option value="" disabled>
             Pilih peralatan laboratorium
@@ -59,6 +109,11 @@ export default function FormPengajuan({
             </option>
           ))}
         </select>
+
+        {/* Galat per kolom */}
+        {galat.alat_id && (
+          <p className="mt-1 text-xs text-red-600">{galat.alat_id}</p>
+        )}
       </div>
 
       {/* Tanggal peminjaman */}
@@ -76,13 +131,21 @@ export default function FormPengajuan({
             name="tgl_pinjam"
             type="date"
             min={minimalTanggal}
+            max={maksimalTanggal}
             required
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+            defaultValue={nilai.tgl_pinjam}
+            className={`w-full rounded-xl border px-4 py-3 outline-none ${kelasBorder(
+              !!galat.tgl_pinjam,
+            )}`}
           />
 
           <p className="mt-1 text-xs text-slate-500">
-            Minimal 14 hari dari hari ini dan hanya Senin–Jumat.
+            Hari ini sampai maksimal 14 hari ke depan, hanya Senin–Jumat.
           </p>
+
+          {galat.tgl_pinjam && (
+            <p className="mt-1 text-xs text-red-600">{galat.tgl_pinjam}</p>
+          )}
         </div>
 
         <div>
@@ -98,12 +161,19 @@ export default function FormPengajuan({
             name="tgl_kembali"
             type="date"
             required
-            className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+            defaultValue={nilai.tgl_kembali}
+            className={`w-full rounded-xl border px-4 py-3 outline-none ${kelasBorder(
+              !!galat.tgl_kembali,
+            )}`}
           />
 
           <p className="mt-1 text-xs text-slate-500">
             Maksimal 3 hari setelah tanggal pinjam.
           </p>
+
+          {galat.tgl_kembali && (
+            <p className="mt-1 text-xs text-red-600">{galat.tgl_kembali}</p>
+          )}
         </div>
       </div>
 
@@ -119,14 +189,20 @@ export default function FormPengajuan({
           type="number"
           min="1"
           max="5"
-          defaultValue="1"
           required
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+          defaultValue={nilai.jumlah}
+          className={`w-full rounded-xl border px-4 py-3 outline-none ${kelasBorder(
+            !!galat.jumlah,
+          )}`}
         />
 
         <p className="mt-1 text-xs text-slate-500">
           Jumlah peminjaman minimal 1 dan maksimal 5 unit.
         </p>
+
+        {galat.jumlah && (
+          <p className="mt-1 text-xs text-red-600">{galat.jumlah}</p>
+        )}
       </div>
 
       {/* Nama peminjam */}
@@ -142,9 +218,16 @@ export default function FormPengajuan({
           minLength={3}
           maxLength={40}
           required
+          defaultValue={nilai.peminjam}
           placeholder="Masukkan nama lengkap"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+          className={`w-full rounded-xl border px-4 py-3 outline-none ${kelasBorder(
+            !!galat.peminjam,
+          )}`}
         />
+
+        {galat.peminjam && (
+          <p className="mt-1 text-xs text-red-600">{galat.peminjam}</p>
+        )}
       </div>
 
       {/* Kelas peminjam */}
@@ -160,14 +243,24 @@ export default function FormPengajuan({
           minLength={3}
           maxLength={20}
           required
+          defaultValue={nilai.kelas}
           placeholder="Contoh: XI RPL 1"
-          className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+          className={`w-full rounded-xl border px-4 py-3 outline-none ${kelasBorder(
+            !!galat.kelas,
+          )}`}
         />
+
+        {galat.kelas && (
+          <p className="mt-1 text-xs text-red-600">{galat.kelas}</p>
+        )}
       </div>
 
       {/* Keperluan peminjaman */}
       <div>
-        <label htmlFor="keperluan" className="mb-2 block text-sm font-semibold">
+        <label
+          htmlFor="keperluan"
+          className="mb-2 block text-sm font-semibold"
+        >
           Keperluan Peminjaman
         </label>
 
@@ -178,24 +271,17 @@ export default function FormPengajuan({
           maxLength={120}
           rows={4}
           required
+          defaultValue={nilai.keperluan}
           placeholder="Jelaskan tujuan peminjaman alat..."
-          className="w-full resize-y rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
+          className={`w-full resize-y rounded-xl border px-4 py-3 outline-none ${kelasBorder(
+            !!galat.keperluan,
+          )}`}
         />
-      </div>
 
-      {/* Pesan hasil pengajuan */}
-      {state.message && (
-        <div
-          role="status"
-          className={`rounded-xl p-4 text-sm font-medium ${
-            state.success
-              ? "bg-green-100 text-green-700"
-              : "bg-red-100 text-red-700"
-          }`}
-        >
-          {state.message}
-        </div>
-      )}
+        {galat.keperluan && (
+          <p className="mt-1 text-xs text-red-600">{galat.keperluan}</p>
+        )}
+      </div>
 
       {/* Tombol kirim pengajuan */}
       <button

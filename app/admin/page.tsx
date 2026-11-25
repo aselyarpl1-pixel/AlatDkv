@@ -13,11 +13,14 @@ import { createClient } from "@/lib/supabase/server";
 // Mengimpor koneksi Supabase khusus server untuk mengambil data
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Mengimpor komponen aksi persetujuan, penolakan, dan penyerahan alat
+// Mengimpor komponen aksi penyerahan dan penolakan alat
 import FormAksiPeminjaman from "./FormAksiPeminjaman";
 
 // Mengimpor komponen formulir pengembalian alat
 import FormPengembalian from "./FormPengembalian";
+
+// Mengimpor action logout admin
+import { logoutAdmin } from "./actions";
 
 // Mengatur halaman agar tidak diproses sebagai halaman statis
 export const instant = false;
@@ -40,12 +43,12 @@ type Peminjaman = {
   } | null;
 };
 
-// Membuat daftar pilihan filter status
+// Membuat daftar pilihan filter status (termasuk terlambat)
 const daftarStatus = [
   { nilai: "semua", label: "Semua" },
   { nilai: "menunggu", label: "Menunggu" },
-  { nilai: "disetujui", label: "Disetujui" },
   { nilai: "dipinjam", label: "Dipinjam" },
+  { nilai: "terlambat", label: "Terlambat" },
   { nilai: "dikembalikan", label: "Dikembalikan" },
   { nilai: "ditolak", label: "Ditolak" },
 ];
@@ -55,10 +58,10 @@ function warnaStatus(status: string) {
   switch (status) {
     case "menunggu":
       return "bg-yellow-100 text-yellow-700";
-    case "disetujui":
-      return "bg-indigo-100 text-indigo-700";
     case "dipinjam":
       return "bg-blue-100 text-blue-700";
+    case "terlambat":
+      return "bg-orange-100 text-orange-700";
     case "dikembalikan":
       return "bg-green-100 text-green-700";
     case "ditolak":
@@ -73,10 +76,10 @@ function namaStatus(status: string) {
   switch (status) {
     case "menunggu":
       return "Menunggu";
-    case "disetujui":
-      return "Disetujui";
     case "dipinjam":
       return "Dipinjam";
+    case "terlambat":
+      return "Terlambat";
     case "dikembalikan":
       return "Dikembalikan";
     case "ditolak":
@@ -84,6 +87,43 @@ function namaStatus(status: string) {
     default:
       return status;
   }
+}
+
+// Mendapatkan tanggal hari ini berdasarkan zona waktu Indonesia Barat
+function tanggalHariIni() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+// Menampilkan ikon berdasarkan kategori alat
+function ikonKategori(kategori?: string | null) {
+  switch (kategori) {
+    case "kamera":
+      return "📷";
+    case "pencahayaan":
+      return "💡";
+    case "audio":
+      return "🎙️";
+    case "tablet":
+      return "💻";
+    case "aksesori":
+      return "🛠️";
+    default:
+      return "📦";
+  }
+}
+
+// Menentukan status yang ditampilkan (termasuk deteksi terlambat)
+function statusTampil(data: Peminjaman) {
+  if (data.status === "dipinjam" && data.tgl_kembali < tanggalHariIni()) {
+    return "terlambat";
+  }
+
+  return data.status;
 }
 
 // Membuat halaman dashboard admin
@@ -158,12 +198,14 @@ export default async function AdminPage({
     (item) => item.status === "menunggu",
   ).length;
 
-  const disetujui = daftarPeminjaman.filter(
-    (item) => item.status === "disetujui",
+  const dipinjam = daftarPeminjaman.filter(
+    (item) =>
+      item.status === "dipinjam" && item.tgl_kembali >= tanggalHariIni(),
   ).length;
 
-  const dipinjam = daftarPeminjaman.filter(
-    (item) => item.status === "dipinjam",
+  const terlambat = daftarPeminjaman.filter(
+    (item) =>
+      item.status === "dipinjam" && item.tgl_kembali < tanggalHariIni(),
   ).length;
 
   const dikembalikan = daftarPeminjaman.filter(
@@ -178,8 +220,8 @@ export default async function AdminPage({
   const jumlahStatus: Record<string, number> = {
     semua: totalPengajuan,
     menunggu,
-    disetujui,
     dipinjam,
+    terlambat,
     dikembalikan,
     ditolak,
   };
@@ -188,108 +230,143 @@ export default async function AdminPage({
   const dataTampil =
     statusAktif === "semua"
       ? daftarPeminjaman
-      : daftarPeminjaman.filter((item) => item.status === statusAktif);
+      : statusAktif === "terlambat"
+        ? daftarPeminjaman.filter(
+            (item) =>
+              item.status === "dipinjam" &&
+              item.tgl_kembali < tanggalHariIni(),
+          )
+        : daftarPeminjaman.filter((item) => item.status === statusAktif);
 
   return (
-    // Bagian utama halaman dashboard admin
-    <main className="min-h-screen bg-gray-50 px-5 py-10">
-      <div className="mx-auto max-w-7xl">
-        {/* Bagian header dashboard admin */}
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-medium text-green-700">
-              SISTEM INFORMASI LABORATORIUM DKV
-            </p>
+    <main className="min-h-screen bg-slate-100">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* ===== Header ===== */}
+        <header className="mb-8 overflow-hidden rounded-2xl bg-linear-to-br from-emerald-600 via-teal-600 to-cyan-700 p-6 text-white shadow-lg sm:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider backdrop-blur">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-200" />
+                Sistem Informasi Laboratorium DKV
+              </span>
+              <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">
+                Dashboard Admin
+              </h1>
+              <p className="mt-1 text-sm text-emerald-50/90">
+                Kelola pengajuan peminjaman alat laboratorium.
+              </p>
+            </div>
 
-            <h1 className="mt-2 text-3xl font-bold text-gray-900">
-              Dashboard Admin
-            </h1>
-
-            <p className="mt-2 text-gray-500">
-              Kelola pengajuan peminjaman alat laboratorium.
-            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/admin/alat"
+                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"
+              >
+                <span aria-hidden="true">📦</span> Kelola Alat
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
+              >
+                <span aria-hidden="true">🏠</span> Beranda
+              </Link>
+              <form action={logoutAdmin}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-red-600"
+                >
+                  <span aria-hidden="true">🚪</span> Keluar
+                </button>
+              </form>
+            </div>
           </div>
+        </header>
 
-          {/* Tombol kembali ke halaman utama */}
-          <Link
-            href="/"
-            className="rounded-xl border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-100"
-          >
-            Kembali ke Beranda
-          </Link>
-        </div>
-
-        {/* Menampilkan pesan jika pengambilan data gagal */}
+        {/* Pesan error */}
         {error && (
-          <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-700">
-            Gagal mengambil data pengajuan: {error.message}
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <span aria-hidden="true">⚠️</span>
+            <span>Gagal mengambil data pengajuan: {error.message}</span>
           </div>
         )}
 
-        {/* Bagian ringkasan jumlah pengajuan */}
-        <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Kartu total pengajuan */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">Total Pengajuan</p>
-            <h2 className="mt-3 text-3xl font-bold text-gray-900">
-              {totalPengajuan}
-            </h2>
+        {/* ===== Stat Cards ===== */}
+        <section className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            {
+              label: "Total",
+              nilai: totalPengajuan,
+              ikon: "📊",
+              warna: "from-slate-500 to-slate-600",
+            },
+            {
+              label: "Menunggu",
+              nilai: menunggu,
+              ikon: "⏳",
+              warna: "from-amber-400 to-yellow-500",
+            },
+            {
+              label: "Dipinjam",
+              nilai: dipinjam,
+              ikon: "📤",
+              warna: "from-sky-400 to-blue-500",
+            },
+            {
+              label: "Terlambat",
+              nilai: terlambat,
+              ikon: "⏰",
+              warna: "from-orange-400 to-red-500",
+            },
+            {
+              label: "Dikembalikan",
+              nilai: dikembalikan,
+              ikon: "✅",
+              warna: "from-emerald-400 to-green-600",
+            },
+            {
+              label: "Ditolak",
+              nilai: ditolak,
+              ikon: "❌",
+              warna: "from-rose-400 to-red-600",
+            },
+          ].map((kartu) => (
+            <div
+              key={kartu.label}
+              className="group relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div
+                className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-br ${kartu.warna} text-lg shadow-sm`}
+              >
+                <span aria-hidden="true">{kartu.ikon}</span>
+              </div>
+              <p className="text-xs font-medium text-slate-500">
+                {kartu.label}
+              </p>
+              <p className="mt-0.5 text-2xl font-bold text-slate-800">
+                {kartu.nilai}
+              </p>
+            </div>
+          ))}
+        </section>
+
+        {/* ===== Tabel Pengajuan ===== */}
+        <section className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/60">
+          <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">
+                Daftar Pengajuan Peminjaman
+              </h2>
+              <p className="mt-0.5 text-sm text-slate-500">
+                Pilih kategori untuk menyaring pengajuan berdasarkan status.
+              </p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 sm:self-auto">
+              {dataTampil.length} data
+            </span>
           </div>
 
-          {/* Kartu pengajuan menunggu */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">Menunggu</p>
-            <h2 className="mt-3 text-3xl font-bold text-yellow-600">
-              {menunggu}
-            </h2>
-          </div>
-
-          {/* Kartu pengajuan disetujui */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">Disetujui</p>
-            <h2 className="mt-3 text-3xl font-bold text-indigo-600">
-              {disetujui}
-            </h2>
-          </div>
-
-          {/* Kartu alat yang sedang dipinjam */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">Sedang Dipinjam</p>
-            <h2 className="mt-3 text-3xl font-bold text-blue-600">
-              {dipinjam}
-            </h2>
-          </div>
-
-          {/* Kartu alat yang sudah dikembalikan */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">Sudah Dikembalikan</p>
-            <h2 className="mt-3 text-3xl font-bold text-green-600">
-              {dikembalikan}
-            </h2>
-          </div>
-
-          {/* Kartu pengajuan yang ditolak */}
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">Ditolak</p>
-            <h2 className="mt-3 text-3xl font-bold text-red-600">{ditolak}</h2>
-          </div>
-        </div>
-
-        {/* Bagian daftar pengajuan peminjaman */}
-        <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
-          {/* Judul tabel pengajuan */}
-          <div className="border-b border-gray-100 p-6">
-            <h2 className="text-xl font-bold text-gray-900">
-              Daftar Pengajuan Peminjaman
-            </h2>
-
-            <p className="mt-1 text-sm text-gray-500">
-              Pilih kategori untuk melihat pengajuan berdasarkan status.
-            </p>
-          </div>
-
-          {/* Menu filter kategori status */}
-          <div className="flex flex-wrap gap-2 border-b border-gray-100 p-5">
+          {/* Filter status */}
+          <div className="flex flex-wrap gap-2 border-b border-slate-100 p-5">
             {daftarStatus.map((item) => (
               <Link
                 key={item.nilai}
@@ -298,115 +375,131 @@ export default async function AdminPage({
                     ? "/admin"
                     : `/admin?status=${item.nilai}`
                 }
-                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
                   statusAktif === item.nilai
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-emerald-600 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
                 {item.label}
-                <span className="ml-2">({jumlahStatus[item.nilai]})</span>
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                    statusAktif === item.nilai
+                      ? "bg-white/20"
+                      : "bg-white text-slate-500"
+                  }`}
+                >
+                  {jumlahStatus[item.nilai]}
+                </span>
               </Link>
             ))}
           </div>
 
-          {/* Membuat tabel dapat digeser pada layar kecil */}
+          {/* Tabel */}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-250 text-left text-sm">
-              {/* Bagian kepala tabel */}
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <th className="px-6 py-4">No.</th>
-                  <th className="px-6 py-4">Peminjam</th>
-                  <th className="px-6 py-4">Alat</th>
-                  <th className="px-6 py-4">Jumlah</th>
-                  <th className="px-6 py-4">Tanggal Pinjam</th>
-                  <th className="px-6 py-4">Tanggal Kembali</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4">Aksi</th>
+            <table className="w-full min-w-225 border-collapse text-left text-sm">
+              <thead>
+                <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                  <th className="px-6 py-3.5 font-semibold">No.</th>
+                  <th className="px-6 py-3.5 font-semibold">Peminjam</th>
+                  <th className="px-6 py-3.5 font-semibold">Alat</th>
+                  <th className="px-6 py-3.5 font-semibold">Jumlah</th>
+                  <th className="px-6 py-3.5 font-semibold">Tgl Pinjam</th>
+                  <th className="px-6 py-3.5 font-semibold">Tgl Kembali</th>
+                  <th className="px-6 py-3.5 font-semibold">Status</th>
+                  <th className="px-6 py-3.5 font-semibold">Aksi</th>
                 </tr>
               </thead>
-
-              {/* Bagian isi tabel */}
-              <tbody className="divide-y divide-gray-100">
-                {/* Memeriksa apakah terdapat data sesuai filter */}
+              <tbody className="divide-y divide-slate-100">
                 {dataTampil.length > 0 ? (
                   dataTampil.map((item, index) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      {/* Nomor urut dan ID pengajuan */}
+                    <tr
+                      key={item.id}
+                      className="transition-colors hover:bg-slate-50/70"
+                    >
                       <td className="px-6 py-4">
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-semibold text-slate-800">
                           {index + 1}
                         </p>
-                        <p className="text-xs text-gray-400">ID: {item.id}</p>
+                        <p className="text-xs text-slate-400">#{item.id}</p>
                       </td>
 
-                      {/* Informasi peminjam */}
                       <td className="px-6 py-4">
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-semibold text-slate-800">
                           {item.peminjam}
                         </p>
-                        <p className="text-xs text-gray-500">{item.kelas}</p>
+                        <p className="text-xs text-slate-500">{item.kelas}</p>
                       </td>
 
-                      {/* Nama dan kategori alat */}
-                      <td className="px-6 py-4 text-gray-700">
-                        <p className="font-semibold">
-                          {item.alat?.nama || "Alat tidak ditemukan"}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {item.alat?.kategori || "-"}
-                        </p>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-base"
+                            aria-hidden="true"
+                          >
+                            {ikonKategori(item.alat?.kategori)}
+                          </span>
+                          <div>
+                            <p className="font-semibold text-slate-800">
+                              {item.alat?.nama || "Alat tidak ditemukan"}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {item.alat?.kategori || "-"}
+                            </p>
+                          </div>
+                        </div>
                       </td>
 
-                      {/* Jumlah alat yang diajukan */}
-                      <td className="px-6 py-4 text-gray-700">
-                        {item.jumlah} unit
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                          {item.jumlah} unit
+                        </span>
                       </td>
 
-                      {/* Tanggal peminjaman */}
-                      <td className="px-6 py-4 text-gray-700">
+                      <td className="px-6 py-4 text-slate-600">
                         {item.tgl_pinjam}
                       </td>
 
-                      {/* Tanggal pengembalian */}
-                      <td className="px-6 py-4 text-gray-700">
+                      <td className="px-6 py-4 text-slate-600">
                         {item.tgl_kembali}
                       </td>
 
-                      {/* Status pengajuan dengan warna sesuai status */}
                       <td className="px-6 py-4">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${warnaStatus(
-                            item.status,
+                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${warnaStatus(
+                            statusTampil(item),
                           )}`}
                         >
-                          {namaStatus(item.status)}
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              statusTampil(item) === "menunggu"
+                                ? "bg-yellow-500"
+                                : statusTampil(item) === "dipinjam"
+                                  ? "bg-blue-500"
+                                  : statusTampil(item) === "terlambat"
+                                    ? "bg-orange-500"
+                                    : statusTampil(item) === "dikembalikan"
+                                      ? "bg-green-500"
+                                      : "bg-red-500"
+                            }`}
+                          />
+                          {namaStatus(statusTampil(item))}
                         </span>
 
-                        {/* Menampilkan alasan jika pengajuan ditolak */}
                         {item.status === "ditolak" && item.alasan_tolak && (
-                          <p className="mt-2 max-w-48 text-xs text-red-600">
+                          <p className="mt-2 max-w-60 text-xs text-red-600">
                             Alasan: {item.alasan_tolak}
                           </p>
                         )}
                       </td>
 
-                      {/* Kolom aksi sesuai status pengajuan */}
                       <td className="px-6 py-4">
-                        {item.status === "menunggu" ||
-                        item.status === "disetujui" ? (
-                          // Menampilkan aksi persetujuan, penolakan, atau penyerahan
-                          <FormAksiPeminjaman
-                            id={item.id}
-                            status={item.status}
-                          />
+                        {item.status === "menunggu" ? (
+                          <FormAksiPeminjaman id={item.id} />
                         ) : item.status === "dipinjam" ? (
-                          // Menampilkan formulir pengembalian alat
                           <FormPengembalian id={item.id} />
                         ) : (
-                          // Menampilkan keterangan jika sudah selesai
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-slate-400">
                             Sudah diproses
                           </span>
                         )}
@@ -414,13 +507,20 @@ export default async function AdminPage({
                     </tr>
                   ))
                 ) : (
-                  // Menampilkan pesan jika kategori belum memiliki data
                   <tr>
                     <td
                       colSpan={8}
-                      className="px-6 py-12 text-center text-gray-500"
+                      className="px-6 py-16 text-center"
                     >
-                      Belum ada pengajuan pada kategori ini.
+                      <div className="mx-auto max-w-xs">
+                        <div className="mb-3 text-4xl">📭</div>
+                        <p className="font-semibold text-slate-700">
+                          Belum ada pengajuan
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Tidak ada pengajuan pada kategori ini.
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 )}

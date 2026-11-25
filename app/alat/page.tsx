@@ -35,8 +35,8 @@ const kategoriAlat = [
   { nama: "Kamera", nilai: "kamera", ikon: "📷" },
   { nama: "Pencahayaan", nilai: "pencahayaan", ikon: "💡" },
   { nama: "Audio", nilai: "audio", ikon: "🎙️" },
-  { nama: "Tablet", nilai: "tablet", ikon: "📱" },
-  { nama: "Aksesori", nilai: "aksesori", ikon: "🎒" },
+  { nama: "Tablet", nilai: "tablet", ikon: "💻" },
+  { nama: "Aksesori", nilai: "aksesori", ikon: "🛠️" },
 ];
 
 // Mengubah kategori menjadi tulisan yang lebih rapi
@@ -222,18 +222,15 @@ export default async function DaftarAlat({
       </section>
 
       {/* Bagian filter kategori alat */}
-      <section className="mx-auto max-w-7xl px-6 pb-8">
-        <div className="mb-5">
-          <h2 className="text-2xl font-bold text-slate-900">
+      <section className="mx-auto max-w-7xl px-6 pb-6">
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
             Kategori Peralatan
           </h2>
-          <p className="mt-2 text-sm text-slate-500">
-            Pilih kategori untuk melihat alat sesuai jenisnya.
-          </p>
         </div>
 
-        {/* Menampilkan tombol pilihan kategori */}
-        <div className="flex flex-wrap gap-3">
+        {/* Menampilkan tombol pilihan kategori (ukuran ringkas) */}
+        <div className="flex flex-wrap gap-2">
           {kategoriAlat.map((kategori) => (
             <Link
               key={kategori.nilai}
@@ -242,13 +239,13 @@ export default async function DaftarAlat({
                   ? "/alat"
                   : `/alat?kategori=${kategori.nilai}`
               }
-              className={`rounded-xl border px-5 py-3 text-sm font-semibold transition ${
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition sm:text-sm ${
                 kategoriAktif === kategori.nilai
                   ? "border-blue-600 bg-blue-600 text-white"
                   : "border-slate-200 bg-white text-slate-700 hover:border-blue-400 hover:text-blue-700"
               }`}
             >
-              <span className="mr-2">{kategori.ikon}</span>
+              <span>{kategori.ikon}</span>
               {kategori.nama}
             </Link>
           ))}
@@ -298,8 +295,8 @@ export default async function DaftarAlat({
                       : item.kategori === "audio"
                         ? "🎙️"
                         : item.kategori === "tablet"
-                          ? "📱"
-                          : "🎒"}
+                          ? "💻"
+                          : "🛠️"}
                 </div>
 
                 {/* Menampilkan nama dan kategori alat */}

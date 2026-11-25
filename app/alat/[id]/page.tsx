@@ -25,6 +25,19 @@ type Peminjaman = {
   jumlah: number;
 };
 
+// Tipe data riwayat peminjaman alat
+type RiwayatPeminjaman = {
+  id: number;
+  peminjam: string;
+  kelas: string;
+  jumlah: number;
+  tgl_pinjam: string;
+  tgl_kembali: string;
+  status: string;
+  tgl_dikembalikan: string | null;
+  kondisi_kembali: string | null;
+};
+
 // Mengubah kategori menjadi tulisan yang lebih rapi
 function formatKategori(kategori: string) {
   return kategori
@@ -42,9 +55,11 @@ function ikonKategori(kategori: string) {
     case "audio":
       return "🎙️";
     case "tablet":
-      return "📱";
+      return "💻";
+    case "aksesori":
+      return "🛠️";
     default:
-      return "🎒";
+      return "📦";
   }
 }
 
@@ -118,6 +133,70 @@ export default async function DetailAlat({
 
   // Menentukan apakah alat bisa diajukan
   const bisaDiajukan = stokTersedia > 0;
+
+  // Mengambil riwayat peminjaman alat ini (semua status)
+  const { data: riwayatData, error: riwayatError } = await supabase
+    .from("peminjaman_alat")
+    .select(
+      "id, peminjam, kelas, jumlah, tgl_pinjam, tgl_kembali, status, tgl_dikembalikan, kondisi_kembali",
+    )
+    .eq("alat_id", alat.id)
+    .order("id", { ascending: false });
+
+  if (riwayatError) {
+    console.error(
+      "Gagal mengambil riwayat peminjaman alat:",
+      riwayatError.message,
+    );
+  }
+
+  const riwayatPeminjaman = ((riwayatData ?? []) as RiwayatPeminjaman[]).map(
+    (item) => ({
+      ...item,
+      // Menandai status "terlambat" jika masih dipinjam dan lewat tanggal kembali
+      statusTampil:
+        item.status === "dipinjam" &&
+        item.tgl_kembali <
+          new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Jakarta",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(new Date())
+          ? "terlambat"
+          : item.status,
+    }),
+  );
+
+  // Mengubah tanggal menjadi format Indonesia
+  const formatTanggal = (tanggal: string) =>
+    new Date(tanggal + "T00:00:00").toLocaleDateString("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+  // Mengatur warna berdasarkan status
+  const warnaStatus = (status: string) => {
+    switch (status) {
+      case "menunggu":
+        return "bg-yellow-100 text-yellow-700";
+      case "dipinjam":
+        return "bg-blue-100 text-blue-700";
+      case "dikembalikan":
+        return "bg-green-100 text-green-700";
+      case "ditolak":
+        return "bg-red-100 text-red-700";
+      case "terlambat":
+        return "bg-orange-100 text-orange-700";
+      default:
+        return "bg-slate-100 text-slate-700";
+    }
+  };
+
+  // Menampilkan nama status
+  const namaStatus = (status: string) =>
+    status.charAt(0).toUpperCase() + status.slice(1);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-800">
@@ -249,6 +328,85 @@ export default async function DetailAlat({
             )}
           </div>
         </div>
+
+        {/* ===== Riwayat Peminjaman Alat ===== */}
+        <section className="mt-12">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-slate-800">
+              Riwayat Peminjaman
+            </h2>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+              {riwayatPeminjaman.length} catatan
+            </span>
+          </div>
+
+          {riwayatPeminjaman.length === 0 ? (
+            <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
+              <div className="mb-3 text-4xl">📭</div>
+              <p className="font-semibold text-slate-700">
+                Belum ada riwayat peminjaman
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Alat ini belum pernah dipinjam.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <table className="w-full min-w-[700px] text-left text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-5 py-3.5 font-semibold">No.</th>
+                    <th className="px-5 py-3.5 font-semibold">Peminjam</th>
+                    <th className="px-5 py-3.5 font-semibold">Kelas</th>
+                    <th className="px-5 py-3.5 font-semibold">Jumlah</th>
+                    <th className="px-5 py-3.5 font-semibold">Tgl Pinjam</th>
+                    <th className="px-5 py-3.5 font-semibold">Tgl Kembali</th>
+                    <th className="px-5 py-3.5 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {riwayatPeminjaman.map((item, index) => (
+                    <tr
+                      key={item.id}
+                      className="transition-colors hover:bg-slate-50/70"
+                    >
+                      <td className="px-5 py-3.5 text-slate-500">
+                        {index + 1}
+                      </td>
+                      <td className="px-5 py-3.5 font-medium text-slate-800">
+                        {item.peminjam}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600">
+                        {item.kelas}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600">
+                        {item.jumlah} unit
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600">
+                        {formatTanggal(item.tgl_pinjam)}
+                      </td>
+                      <td className="px-5 py-3.5 text-slate-600">
+                        {formatTanggal(item.tgl_kembali)}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${warnaStatus(item.statusTampil)}`}
+                        >
+                          {namaStatus(item.statusTampil)}
+                        </span>
+                        {item.status === "dikembalikan" && item.kondisi_kembali && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            Kondisi: {item.kondisi_kembali}
+                          </p>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </section>
 
       {/* Footer halaman */}

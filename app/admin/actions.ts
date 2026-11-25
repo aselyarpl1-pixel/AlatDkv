@@ -9,6 +9,24 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Mengimpor revalidatePath untuk memperbarui halaman setelah data berubah
 import { revalidatePath } from "next/cache";
 
+// Mengimpor redirect untuk mengarahkan pengguna setelah logout
+import { redirect } from "next/navigation";
+
+// Mengimpor modul notifikasi email saat status peminjaman berubah
+import { kirimNotifikasiStatus } from "@/lib/notifikasi";
+
+// Mengambil nama alat dengan aman dari hasil relasi Supabase
+// (bisa berupa objek atau array tergantung jenis relasi)
+function ambilNamaAlat(alat: unknown): string {
+  if (Array.isArray(alat)) {
+    return alat.length > 0 ? String(alat[0]?.nama ?? "alat") : "alat";
+  }
+  if (alat && typeof alat === "object") {
+    return String((alat as { nama?: unknown }).nama ?? "alat");
+  }
+  return "alat";
+}
+
 // Membuat tipe data untuk hasil proses pengajuan
 export type FormState = {
   success: boolean;
@@ -39,64 +57,12 @@ async function periksaAdmin(): Promise<boolean> {
 // Memperbarui halaman setelah data peminjaman berubah
 function perbaruiHalaman() {
   revalidatePath("/admin");
+  revalidatePath("/admin/alat");
   revalidatePath("/alat");
   revalidatePath("/cek");
 }
 
-// Membuat fungsi untuk menyetujui pengajuan peminjaman
-export async function setujuiPeminjaman(
-  _prevState: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  // Memeriksa hak akses admin
-  if (!(await periksaAdmin())) {
-    return {
-      success: false,
-      message: "Kamu tidak memiliki akses admin.",
-    };
-  }
-
-  // Mengambil ID pengajuan dari formulir
-  const id = Number(formData.get("id"));
-
-  // Memastikan ID pengajuan valid
-  if (!Number.isInteger(id) || id <= 0) {
-    return {
-      success: false,
-      message: "ID pengajuan tidak valid.",
-    };
-  }
-
-  // Membuat koneksi Supabase khusus server
-  const supabase = createAdminClient();
-
-  // Mengubah status pengajuan menjadi disetujui
-  const { data, error } = await supabase
-    .from("peminjaman_alat")
-    .update({ status: "disetujui" })
-    .eq("id", id)
-    .eq("status", "menunggu")
-    .select("id")
-    .maybeSingle();
-
-  // Memeriksa hasil perubahan status
-  if (error || !data) {
-    return {
-      success: false,
-      message: "Pengajuan gagal disetujui atau sudah diproses.",
-    };
-  }
-
-  // Memperbarui halaman yang berkaitan dengan peminjaman
-  perbaruiHalaman();
-
-  return {
-    success: true,
-    message: "Pengajuan berhasil disetujui.",
-  };
-}
-
-// Membuat fungsi untuk menyerahkan alat kepada peminjam
+// Membuat fungsi untuk menyerahkan alat kepada peminjam (dari status menunggu langsung ke dipinjam)
 export async function serahkanPeminjaman(
   _prevState: FormState,
   formData: FormData,
@@ -123,10 +89,12 @@ export async function serahkanPeminjaman(
   // Membuat koneksi Supabase khusus server
   const supabase = createAdminClient();
 
-  // Mengambil data pengajuan yang sudah disetujui
+  // Mengambil data pengajuan yang masih menunggu
   const { data: pengajuan, error: errorPengajuan } = await supabase
     .from("peminjaman_alat")
-    .select("id, alat_id, jumlah, status")
+    .select(
+      `id, alat_id, jumlah, status, peminjam, tgl_pinjam, tgl_kembali, alat (nama)`,
+    )
     .eq("id", id)
     .maybeSingle();
 
@@ -138,11 +106,11 @@ export async function serahkanPeminjaman(
     };
   }
 
-  // Memastikan pengajuan sudah disetujui
-  if (pengajuan.status !== "disetujui") {
+  // Memastikan pengajuan masih berstatus menunggu
+  if (pengajuan.status !== "menunggu") {
     return {
       success: false,
-      message: "Pengajuan belum disetujui atau sudah diproses.",
+      message: "Pengajuan sudah diproses.",
     };
   }
 
@@ -198,7 +166,7 @@ export async function serahkanPeminjaman(
     .from("peminjaman_alat")
     .update({ status: "dipinjam" })
     .eq("id", id)
-    .eq("status", "disetujui")
+    .eq("status", "menunggu")
     .select("id")
     .maybeSingle();
 
@@ -209,6 +177,15 @@ export async function serahkanPeminjaman(
       message: "Penyerahan alat gagal atau sudah diproses.",
     };
   }
+
+  // Mengirim notifikasi email bahwa alat telah diserahkan
+  await kirimNotifikasiStatus("dipinjam", {
+    namaPeminjam: String(pengajuan.peminjam),
+    namaAlat: ambilNamaAlat(pengajuan.alat),
+    jumlah: pengajuan.jumlah,
+    tglPinjam: String(pengajuan.tgl_pinjam),
+    tglKembali: String(pengajuan.tgl_kembali),
+  });
 
   // Memperbarui halaman yang berkaitan dengan peminjaman
   perbaruiHalaman();
@@ -255,6 +232,16 @@ export async function tolakPeminjaman(
   // Membuat koneksi Supabase khusus server
   const supabase = createAdminClient();
 
+  // Mengambil data pengajuan untuk keperluan notifikasi
+  const { data: pengajuan, error: errorPengajuan } = await supabase
+    .from("peminjaman_alat")
+    .select(
+      `id, jumlah, peminjam, tgl_pinjam, tgl_kembali, alat (nama)`,
+    )
+    .eq("id", id)
+    .eq("status", "menunggu")
+    .maybeSingle();
+
   // Mengubah status pengajuan menjadi ditolak
   const { data, error } = await supabase
     .from("peminjaman_alat")
@@ -273,6 +260,21 @@ export async function tolakPeminjaman(
       success: false,
       message: "Pengajuan gagal ditolak atau sudah diproses.",
     };
+  }
+
+  // Mengirim notifikasi email bahwa pengajuan ditolak
+  if (!errorPengajuan && pengajuan) {
+    await kirimNotifikasiStatus(
+      "ditolak",
+      {
+        namaPeminjam: String(pengajuan.peminjam),
+        namaAlat: ambilNamaAlat(pengajuan.alat),
+        jumlah: pengajuan.jumlah,
+        tglPinjam: String(pengajuan.tgl_pinjam),
+        tglKembali: String(pengajuan.tgl_kembali),
+      },
+      { alasanTolak: alasan },
+    );
   }
 
   // Memperbarui halaman yang berkaitan dengan peminjaman
@@ -322,6 +324,16 @@ export async function kembalikanPeminjaman(
   // Membuat koneksi Supabase khusus server
   const supabase = createAdminClient();
 
+  // Mengambil data peminjaman untuk keperluan notifikasi
+  const { data: peminjaman, error: errorPeminjaman } = await supabase
+    .from("peminjaman_alat")
+    .select(
+      `id, jumlah, peminjam, tgl_pinjam, tgl_kembali, alat (nama)`,
+    )
+    .eq("id", id)
+    .eq("status", "dipinjam")
+    .maybeSingle();
+
   // Mengambil tanggal hari ini berdasarkan zona waktu Indonesia
   const tanggalKembali = new Date().toLocaleDateString("en-CA", {
     timeZone: "Asia/Jakarta",
@@ -348,6 +360,21 @@ export async function kembalikanPeminjaman(
     };
   }
 
+  // Mengirim notifikasi email bahwa alat telah dikembalikan
+  if (!errorPeminjaman && peminjaman) {
+    await kirimNotifikasiStatus(
+      "dikembalikan",
+      {
+        namaPeminjam: String(peminjaman.peminjam),
+        namaAlat: ambilNamaAlat(peminjaman.alat),
+        jumlah: peminjaman.jumlah,
+        tglPinjam: String(peminjaman.tgl_pinjam),
+        tglKembali: String(peminjaman.tgl_kembali),
+      },
+      { kondisi },
+    );
+  }
+
   // Memperbarui halaman yang berkaitan dengan peminjaman
   perbaruiHalaman();
 
@@ -355,4 +382,16 @@ export async function kembalikanPeminjaman(
     success: true,
     message: "Pengembalian alat berhasil diproses.",
   };
+}
+
+// Membuat fungsi untuk keluar (logout) dari sesi admin
+export async function logoutAdmin() {
+  // Membuat koneksi Supabase untuk mengakses sesi
+  const supabase = await createClient();
+
+  // Mengakhiri sesi pengguna saat ini
+  await supabase.auth.signOut();
+
+  // Mengarahkan pengguna kembali ke halaman login
+  redirect("/login");
 }

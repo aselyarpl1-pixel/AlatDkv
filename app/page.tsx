@@ -25,8 +25,8 @@ const kategoriAlat = [
   { nama: "Kamera", nilai: "kamera", ikon: "📷" },
   { nama: "Pencahayaan", nilai: "pencahayaan", ikon: "💡" },
   { nama: "Audio", nilai: "audio", ikon: "🎙️" },
-  { nama: "Tablet", nilai: "tablet", ikon: "📱" },
-  { nama: "Aksesori", nilai: "aksesori", ikon: "🎒" },
+  { nama: "Tablet", nilai: "tablet", ikon: "💻" },
+  { nama: "Aksesori", nilai: "aksesori", ikon: "🛠️" },
 ];
 
 // Halaman utama aplikasi AlatDKV
@@ -168,20 +168,17 @@ export default async function Home() {
 
       {/* Bagian kategori alat */}
       <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
-        <div className="mb-6">
+        <div className="mb-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-blue-700 sm:text-sm">
             Kategori Peralatan
           </p>
-          <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
+          <h2 className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">
             Jelajahi Berdasarkan Kategori
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-slate-500 sm:text-base">
-            Pilih kategori untuk melihat peralatan laboratorium yang tersedia.
-          </p>
         </div>
 
-        {/* Menampilkan pilihan kategori dalam bentuk kartu responsif */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5">
+        {/* Menampilkan pilihan kategori dalam bentuk kartu ringkas */}
+        <div className="flex flex-wrap gap-2 sm:gap-3">
           {kategoriAlat.map((kategori) => {
             // Menghitung jumlah alat pada setiap kategori
             const jumlah = daftarAlat.filter(
@@ -192,17 +189,13 @@ export default async function Home() {
               <Link
                 key={kategori.nilai}
                 href={`/alat?kategori=${kategori.nilai}`}
-                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:border-blue-300 hover:shadow-md sm:p-5"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
               >
-                <div className="text-3xl">{kategori.ikon}</div>
-
-                <h3 className="mt-3 text-sm font-bold text-slate-900 sm:mt-4 sm:text-base">
+                <span className="text-xl">{kategori.ikon}</span>
+                <span className="text-sm font-semibold text-slate-900">
                   {kategori.nama}
-                </h3>
-
-                <p className="mt-1 text-xs text-slate-500 sm:text-sm">
-                  {jumlah} jenis alat
-                </p>
+                </span>
+                <span className="text-xs text-slate-500">({jumlah})</span>
               </Link>
             );
           })}
@@ -257,8 +250,8 @@ export default async function Home() {
                       : item.kategori === "audio"
                         ? "🎙️"
                         : item.kategori === "tablet"
-                          ? "📱"
-                          : "🎒"}
+                          ? "💻"
+                          : "🛠️"}
                 </div>
 
                 {/* Menampilkan nama dan kategori alat */}

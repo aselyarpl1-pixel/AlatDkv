@@ -2,10 +2,26 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Tipe data nilai formulir yang dikirim (untuk dipelihara saat galat)
+export type NilaiForm = {
+  alat_id: string;
+  peminjam: string;
+  kelas: string;
+  keperluan: string;
+  jumlah: string;
+  tgl_pinjam: string;
+  tgl_kembali: string;
+};
+
+// Tipe data galat per kolom
+export type GalatForm = Partial<Record<keyof NilaiForm, string>>;
+
 // Tipe data hasil proses pengajuan
 export type FormState = {
   success: boolean;
   message: string;
+  errors: GalatForm;
+  values: NilaiForm;
 };
 
 // Mengambil tanggal hari ini berdasarkan zona waktu Indonesia
@@ -60,93 +76,133 @@ export async function ajukanPeminjaman(
   formData: FormData,
 ): Promise<FormState> {
   // Mengambil data dari formulir
-  const alatId = Number(formData.get("alat_id"));
+  const alatId = String(formData.get("alat_id") ?? "");
   const nama = String(formData.get("peminjam") ?? "").trim();
   const kelas = String(formData.get("kelas") ?? "").trim();
   const keperluan = String(formData.get("keperluan") ?? "").trim();
-  const jumlah = Number(formData.get("jumlah"));
+  const jumlah = String(formData.get("jumlah") ?? "");
   const tglPinjam = String(formData.get("tgl_pinjam") ?? "");
   const tglKembali = String(formData.get("tgl_kembali") ?? "");
 
-  // Memeriksa kelengkapan data
-  if (
-    !formData.get("alat_id") ||
-    !nama ||
-    !kelas ||
-    !keperluan ||
-    !formData.get("jumlah") ||
-    !tglPinjam ||
-    !tglKembali
-  ) {
-    return { success: false, message: "Semua kolom wajib diisi." };
-  }
+  // Menyimpan nilai yang dikirim untuk dipelihara saat galat
+  const nilai: NilaiForm = {
+    alat_id: alatId,
+    peminjam: nama,
+    kelas,
+    keperluan,
+    jumlah,
+    tgl_pinjam: tglPinjam,
+    tgl_kembali: tglKembali,
+  };
 
-  // Memeriksa ID alat dan jumlah pinjaman
-  if (!Number.isSafeInteger(alatId) || alatId < 1) {
-    return { success: false, message: "Alat yang dipilih tidak valid." };
-  }
+  // Objek untuk menampung galat per kolom
+  const errors: GalatForm = {};
 
-  if (!Number.isInteger(jumlah) || jumlah < 1 || jumlah > 5) {
+  // Memeriksa kelengkapan data (galat per kolom)
+  if (!alatId) errors.alat_id = "Alat wajib dipilih.";
+  if (!nama) errors.peminjam = "Nama wajib diisi.";
+  if (!kelas) errors.kelas = "Kelas wajib diisi.";
+  if (!keperluan) errors.keperluan = "Keperluan wajib diisi.";
+  if (!jumlah) errors.jumlah = "Jumlah wajib diisi.";
+  if (!tglPinjam) errors.tgl_pinjam = "Tanggal pinjam wajib diisi.";
+  if (!tglKembali) errors.tgl_kembali = "Tanggal kembali wajib diisi.";
+
+  // Jika ada kolom kosong, kembalikan galat per kolom
+  if (Object.keys(errors).length > 0) {
     return {
       success: false,
-      message: "Jumlah peminjaman harus antara 1 sampai 5 unit.",
+      message: "Mohon lengkapi semua kolom yang ditandai.",
+      errors,
+      values: nilai,
     };
+  }
+
+  // Memeriksa ID alat
+  const alatIdAngka = Number(alatId);
+  if (!Number.isSafeInteger(alatIdAngka) || alatIdAngka < 1) {
+    errors.alat_id = "Alat yang dipilih tidak valid.";
+  }
+
+  // Memeriksa jumlah pinjaman
+  const jumlahAngka = Number(jumlah);
+  if (!Number.isInteger(jumlahAngka) || jumlahAngka < 1 || jumlahAngka > 5) {
+    errors.jumlah = "Jumlah harus antara 1 sampai 5 unit.";
   }
 
   // Memeriksa panjang nama, kelas, dan keperluan
   if (nama.length < 3 || nama.length > 40) {
-    return {
-      success: false,
-      message: "Nama harus terdiri dari 3 sampai 40 karakter.",
-    };
+    errors.peminjam = "Nama harus 3 sampai 40 karakter.";
   }
 
   if (kelas.length < 3 || kelas.length > 20) {
-    return {
-      success: false,
-      message: "Kelas harus terdiri dari 3 sampai 20 karakter.",
-    };
+    errors.kelas = "Kelas harus 3 sampai 20 karakter.";
   }
 
   if (keperluan.length < 5 || keperluan.length > 120) {
-    return {
-      success: false,
-      message: "Keperluan harus terdiri dari 5 sampai 120 karakter.",
-    };
+    errors.keperluan = "Keperluan harus 5 sampai 120 karakter.";
   }
 
   // Memeriksa format tanggal
-  if (!tanggalValid(tglPinjam) || !tanggalValid(tglKembali)) {
-    return { success: false, message: "Tanggal yang dimasukkan tidak valid." };
+  if (!tanggalValid(tglPinjam)) {
+    errors.tgl_pinjam = "Format tanggal pinjam tidak valid.";
   }
 
-  // Memeriksa tanggal minimal 14 hari dari hari ini
-  const minimalTanggal = tambahHari(tanggalHariIni(), 14);
+  if (!tanggalValid(tglKembali)) {
+    errors.tgl_kembali = "Format tanggal kembali tidak valid.";
+  }
 
-  if (tglPinjam < minimalTanggal) {
+  // Jika ada galat sejauh ini, kembalikan
+  if (Object.keys(errors).length > 0) {
     return {
       success: false,
-      message: "Tanggal pinjam harus minimal 14 hari dari hari ini.",
+      message: "Periksa kembali data yang Anda masukkan.",
+      errors,
+      values: nilai,
     };
+  }
+
+  // Memeriksa tanggal pinjam: tidak lampau dan paling jauh 14 hari ke depan
+  const hariIni = tanggalHariIni();
+  const maksimalTanggal = tambahHari(hariIni, 14);
+
+  if (tglPinjam < hariIni) {
+    errors.tgl_pinjam = "Tanggal pinjam tidak boleh tanggal lampau.";
+  }
+
+  if (tglPinjam > maksimalTanggal) {
+    errors.tgl_pinjam = "Tanggal pinjam paling jauh 14 hari dari hari ini.";
   }
 
   // Memeriksa agar tanggal pinjam bukan Sabtu atau Minggu
   const hariPinjam = new Date(`${tglPinjam}T00:00:00Z`).getUTCDay();
 
   if (hariPinjam === 0 || hariPinjam === 6) {
-    return {
-      success: false,
-      message: "Peminjaman hanya dapat dilakukan pada hari Senin sampai Jumat.",
-    };
+    errors.tgl_pinjam = "Peminjaman hanya Senin sampai Jumat.";
   }
 
-  // Memeriksa tanggal kembali maksimal 3 hari setelah tanggal pinjam
+  // Memeriksa agar tanggal kembali bukan Sabtu atau Minggu
+  const hariKembali = new Date(`${tglKembali}T00:00:00Z`).getUTCDay();
+
+  if (hariKembali === 0 || hariKembali === 6) {
+    errors.tgl_kembali = "Tanggal kembali hanya Senin sampai Jumat.";
+  }
+
+  // Memeriksa tanggal kembali tidak boleh sebelum tanggal pinjam, paling lama 3 hari
   const selisihTanggal = selisihHari(tglPinjam, tglKembali);
 
-  if (selisihTanggal < 0 || selisihTanggal > 3) {
+  if (selisihTanggal < 0) {
+    errors.tgl_kembali = "Tanggal kembali tidak boleh sebelum tanggal pinjam.";
+  } else if (selisihTanggal > 3) {
+    errors.tgl_kembali = "Tanggal kembali maksimal 3 hari setelah pinjam.";
+  }
+
+  // Jika ada galat tanggal, kembalikan
+  if (Object.keys(errors).length > 0) {
     return {
       success: false,
-      message: "Tanggal kembali maksimal 3 hari setelah tanggal pinjam.",
+      message: "Periksa kembali tanggal peminjaman Anda.",
+      errors,
+      values: nilai,
     };
   }
 
@@ -157,14 +213,17 @@ export async function ajukanPeminjaman(
   const { data: alat, error: errorAlat } = await supabase
     .from("alat")
     .select("id, nama, stok, aktif")
-    .eq("id", alatId)
+    .eq("id", alatIdAngka)
     .eq("aktif", true)
     .maybeSingle();
 
   if (errorAlat || !alat) {
+    errors.alat_id = "Alat tidak ditemukan atau sudah tidak aktif.";
     return {
       success: false,
-      message: "Alat tidak ditemukan atau sudah tidak aktif.",
+      message: "Alat yang dipilih tidak tersedia.",
+      errors,
+      values: nilai,
     };
   }
 
@@ -172,7 +231,7 @@ export async function ajukanPeminjaman(
   const { data: peminjamanAlat, error: errorStok } = await supabase
     .from("peminjaman_alat")
     .select("jumlah")
-    .eq("alat_id", alatId)
+    .eq("alat_id", alatIdAngka)
     .eq("status", "dipinjam");
 
   if (errorStok) {
@@ -181,6 +240,8 @@ export async function ajukanPeminjaman(
     return {
       success: false,
       message: "Gagal memeriksa stok alat. Silakan coba kembali.",
+      errors: {},
+      values: nilai,
     };
   }
 
@@ -193,10 +254,13 @@ export async function ajukanPeminjaman(
   // Menghitung stok yang masih tersedia
   const stokTersedia = Math.max(0, alat.stok - stokDipinjam);
 
-  if (jumlah > stokTersedia) {
+  if (jumlahAngka > stokTersedia) {
+    errors.jumlah = `Stok ${alat.nama} yang tersedia hanya ${stokTersedia} unit.`;
     return {
       success: false,
-      message: `Stok ${alat.nama} yang tersedia hanya ${stokTersedia} unit.`,
+      message: "Jumlah peminjaman melebihi stok tersedia.",
+      errors,
+      values: nilai,
     };
   }
 
@@ -212,6 +276,8 @@ export async function ajukanPeminjaman(
     return {
       success: false,
       message: "Gagal memeriksa data peminjaman. Silakan coba kembali.",
+      errors: {},
+      values: nilai,
     };
   }
 
@@ -225,16 +291,18 @@ export async function ajukanPeminjaman(
     return {
       success: false,
       message: "Maksimal hanya 2 peminjaman aktif untuk satu nama siswa.",
+      errors: {},
+      values: nilai,
     };
   }
 
   // Menyimpan pengajuan ke tabel Supabase
   const { error: errorSimpan } = await supabase.from("peminjaman_alat").insert({
-    alat_id: alatId,
+    alat_id: alatIdAngka,
     peminjam: nama,
     kelas,
     keperluan,
-    jumlah,
+    jumlah: jumlahAngka,
     tgl_pinjam: tglPinjam,
     tgl_kembali: tglKembali,
     status: "menunggu",
@@ -246,6 +314,8 @@ export async function ajukanPeminjaman(
     return {
       success: false,
       message: "Pengajuan gagal disimpan. Silakan coba kembali.",
+      errors: {},
+      values: nilai,
     };
   }
 
@@ -253,5 +323,15 @@ export async function ajukanPeminjaman(
   return {
     success: true,
     message: "Pengajuan berhasil dikirim. Silakan tunggu persetujuan admin.",
+    errors: {},
+    values: {
+      alat_id: "",
+      peminjam: "",
+      kelas: "",
+      keperluan: "",
+      jumlah: "1",
+      tgl_pinjam: "",
+      tgl_kembali: "",
+    },
   };
 }

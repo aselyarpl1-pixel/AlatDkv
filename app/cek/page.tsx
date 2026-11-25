@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+// Mengimpor komponen tombol cetak bukti peminjaman
+import TombolCetak from "./TombolCetak";
+
 // Mengizinkan halaman mengambil data secara dinamis
 export const instant = false;
 
@@ -89,6 +92,7 @@ export default async function CekPeminjaman({
   const peminjam = params.peminjam?.trim() || "";
 
   let dataPeminjaman: Peminjaman | null = null;
+  let riwayatPeminjaman: Peminjaman[] = [];
   let pesanError = "";
 
   // Memeriksa data jika formulir sudah dikirim
@@ -133,6 +137,33 @@ export default async function CekPeminjaman({
           // Memastikan nama cocok tanpa membedakan huruf besar dan kecil
           if (data.peminjam.toLowerCase() === peminjam.toLowerCase()) {
             dataPeminjaman = data as unknown as Peminjaman;
+
+            // Mengambil seluruh riwayat peminjaman milik nama yang sama
+            const { data: riwayat, error: errorRiwayat } = await supabase
+              .from("peminjaman_alat")
+              .select(
+                `
+                id,
+                peminjam,
+                keperluan,
+                jumlah,
+                tgl_pinjam,
+                tgl_kembali,
+                status,
+                alasan_tolak,
+                kondisi_kembali,
+                tgl_dikembalikan,
+                alat (
+                  nama
+                )
+              `,
+              )
+              .ilike("peminjam", peminjam)
+              .order("id", { ascending: false });
+
+            if (!errorRiwayat && riwayat) {
+              riwayatPeminjaman = riwayat as unknown as Peminjaman[];
+            }
           } else {
             pesanError = "Nomor atau nama peminjam tidak cocok.";
           }
@@ -260,11 +291,14 @@ export default async function CekPeminjaman({
                 Detail Peminjaman
               </h2>
 
-              <span
-                className={`rounded-full px-4 py-2 text-sm font-semibold capitalize ${warnaStatus(status)}`}
-              >
-                {status}
-              </span>
+              <div className="flex items-center gap-2">
+                <TombolCetak />
+                <span
+                  className={`rounded-full px-4 py-2 text-sm font-semibold capitalize ${warnaStatus(status)}`}
+                >
+                  {status}
+                </span>
+              </div>
             </div>
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
@@ -357,10 +391,91 @@ export default async function CekPeminjaman({
             )}
           </div>
         )}
+
+        {/* Menampilkan seluruh riwayat peminjaman milik peminjam yang sama */}
+        {riwayatPeminjaman.length > 0 && (
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm print:hidden">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-800">
+                Riwayat Peminjaman
+              </h2>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                {riwayatPeminjaman.length} catatan
+              </span>
+            </div>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Seluruh pengajuan peminjaman yang pernah diajukan oleh{" "}
+              <span className="font-semibold text-slate-700">
+                {riwayatPeminjaman[0]?.peminjam}
+              </span>
+              .
+            </p>
+
+            <div className="mt-5 overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                    <th className="py-3 pr-4 font-semibold">No.</th>
+                    <th className="py-3 pr-4 font-semibold">Alat</th>
+                    <th className="py-3 pr-4 font-semibold">Jumlah</th>
+                    <th className="py-3 pr-4 font-semibold">Tgl Pinjam</th>
+                    <th className="py-3 pr-4 font-semibold">Tgl Kembali</th>
+                    <th className="py-3 pr-4 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {riwayatPeminjaman.map((item, index) => {
+                    const statusItem = statusPeminjaman(item);
+                    const adalahDataSaatIni =
+                      dataPeminjaman && item.id === dataPeminjaman.id;
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className={
+                          adalahDataSaatIni ? "bg-blue-50/60" : "hover:bg-slate-50"
+                        }
+                      >
+                        <td className="py-3 pr-4 text-slate-500">
+                          {index + 1}
+                          {adalahDataSaatIni && (
+                            <span className="ml-1 text-[10px] font-semibold text-blue-600">
+                              (ini)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 pr-4 font-medium text-slate-800">
+                          {item.alat?.nama || "-"}
+                        </td>
+                        <td className="py-3 pr-4 text-slate-600">
+                          {item.jumlah} unit
+                        </td>
+                        <td className="py-3 pr-4 text-slate-600">
+                          {formatTanggal(item.tgl_pinjam)}
+                        </td>
+                        <td className="py-3 pr-4 text-slate-600">
+                          {formatTanggal(item.tgl_kembali)}
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span
+                            className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${warnaStatus(statusItem)}`}
+                          >
+                            {statusItem}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Footer halaman */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-sm text-slate-500">
+      <footer className="border-t border-slate-200 bg-white py-6 text-center text-sm text-slate-500 print:hidden">
         © 2026 AlatDKV. Sistem Informasi Peminjaman Alat Laboratorium DKV.
       </footer>
     </main>

@@ -72,3 +72,18 @@ a {
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+/* Gaya cetak bukti peminjaman */
+@media print {
+  body {
+    background: #fff;
+  }
+
+  nav {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+}

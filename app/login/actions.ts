@@ -9,6 +9,7 @@ import { redirect } from "next/navigation";
 // Membuat tipe data untuk pesan hasil login
 export type FormState = {
   error: string;
+  email: string;
 };
 
 // Membuat fungsi untuk memproses login admin
@@ -22,7 +23,7 @@ export async function loginAdmin(
 
   // Memeriksa apakah email dan password sudah diisi
   if (!email || !password) {
-    return { error: "Email dan password wajib diisi." };
+    return { error: "Email dan password wajib diisi.", email };
   }
 
   // Mengambil email admin dari file .env.local
@@ -30,7 +31,7 @@ export async function loginAdmin(
 
   // Memeriksa apakah email admin sudah dikonfigurasi
   if (!emailAdmin) {
-    return { error: "Email admin belum dikonfigurasi." };
+    return { error: "Email admin belum dikonfigurasi.", email };
   }
 
   // Membuat koneksi Supabase untuk proses autentikasi
@@ -44,7 +45,7 @@ export async function loginAdmin(
 
   // Menampilkan pesan jika proses login gagal
   if (error) {
-    return { error: "Email atau password salah." };
+    return { error: "Email atau password salah.", email };
   }
 
   // Memeriksa apakah akun yang masuk sesuai dengan email admin
@@ -52,7 +53,7 @@ export async function loginAdmin(
     // Mengeluarkan akun yang bukan admin
     await supabase.auth.signOut();
 
-    return { error: "Akun ini tidak memiliki akses admin." };
+    return { error: "Akun ini tidak memiliki akses admin.", email };
   }
 
   // Mengarahkan admin ke halaman pengelolaan

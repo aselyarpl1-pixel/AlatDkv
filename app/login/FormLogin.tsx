@@ -9,6 +9,7 @@ import { loginAdmin, type FormState } from "./actions";
 // Membuat nilai awal untuk pesan kesalahan login
 const initialState: FormState = {
   error: "",
+  email: "",
 };
 
 // Membuat komponen formulir login admin
@@ -18,7 +19,7 @@ export default function FormLogin() {
 
   return (
     // Formulir untuk mengirim email dan password ke Server Action
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} key={state.email} className="space-y-5">
       {/* Input untuk memasukkan email admin */}
       <div>
         <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -29,6 +30,7 @@ export default function FormLogin() {
           type="email"
           name="email"
           required
+          defaultValue={state.email}
           placeholder="Masukkan email admin"
           className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-green-600"
         />
