@@ -42,7 +42,7 @@ export default function FormTambahAlat({
           name="nama"
           required
           minLength={3}
-          maxLength={100}
+          maxLength={40}
           placeholder="Contoh: Kamera DSLR Canon EOS"
           className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
         />
@@ -76,6 +76,7 @@ export default function FormTambahAlat({
           type="number"
           name="stok"
           min={0}
+          max={50}
           defaultValue={1}
           required
           className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500"
