@@ -352,7 +352,7 @@ export default async function DetailAlat({
             </div>
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <table className="w-full min-w-[56rem] text-left text-sm">
+              <table className="w-full min-w-56rem text-left text-sm">
                 <thead>
                   <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-5 py-3.5 font-semibold">No.</th>

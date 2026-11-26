@@ -223,7 +223,7 @@ export default async function KelolaAlat() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
+              <table className="w-full min-w-56rem border-collapse text-left text-sm">
                 <thead>
                   <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-6 py-3.5 font-semibold">ID</th>
