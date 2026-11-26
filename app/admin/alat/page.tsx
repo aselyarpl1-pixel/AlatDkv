@@ -16,6 +16,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // Mengimpor action logout admin
 import { logoutAdmin } from "../actions";
 
+// Mengimpor action untuk toggle aktif dan hapus alat
+import { toggleAktifAlat, hapusAlat } from "./actions";
+
 // Mengimpor komponen form untuk kelola alat
 import FormTambahAlat from "./FormTambahAlat";
 import FormUbahStok from "./FormUbahStok";
@@ -220,7 +223,7 @@ export default async function KelolaAlat() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-225 border-collapse text-left text-sm">
+              <table className="w-full min-w-[56rem] border-collapse text-left text-sm">
                 <thead>
                   <tr className="bg-slate-50 text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-6 py-3.5 font-semibold">ID</th>
@@ -356,9 +359,6 @@ export default async function KelolaAlat() {
     </main>
   );
 }
-
-// Mengimpor action untuk toggle aktif dan hapus
-import { toggleAktifAlat, hapusAlat } from "./actions";
 
 // Membungkus action agar bisa dipakai sebagai form action
 async function toggleAktifFormAction(formData: FormData) {

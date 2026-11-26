@@ -98,11 +98,11 @@ export async function tambahAlat(
     };
   }
 
-  // Memeriksa panjang nama
-  if (nama.length < 3 || nama.length > 100) {
+  // Memeriksa panjang nama (3-40 karakter sesuai spesifikasi)
+  if (nama.length < 3 || nama.length > 40) {
     return {
       success: false,
-      message: "Nama alat harus 3 sampai 100 karakter.",
+      message: "Nama alat harus 3 sampai 40 karakter.",
     };
   }
 
@@ -114,11 +114,11 @@ export async function tambahAlat(
     };
   }
 
-  // Memeriksa stok
-  if (!Number.isInteger(stok) || stok < 0) {
+  // Memeriksa stok (0-50 sesuai spesifikasi)
+  if (!Number.isInteger(stok) || stok < 0 || stok > 50) {
     return {
       success: false,
-      message: "Stok alat harus bilangan bulat tidak negatif.",
+      message: "Stok alat harus bilangan bulat antara 0 sampai 50.",
     };
   }
 
@@ -137,6 +137,23 @@ export async function tambahAlat(
   // Memeriksa hasil penyimpanan
   if (error) {
     console.error("Gagal menambah alat:", error.message);
+
+    // Pelanggaran UNIQUE pada nama (kode 23505)
+    if (error.code === "23505") {
+      return {
+        success: false,
+        message: "Nama alat sudah ada. Gunakan nama yang berbeda.",
+      };
+    }
+
+    // Pelanggaran CHECK constraint (kode 23514)
+    if (error.code === "23514") {
+      return {
+        success: false,
+        message:
+          "Data alat tidak valid (periksa panjang nama, kategori, atau stok 0-50).",
+      };
+    }
 
     return {
       success: false,
@@ -178,11 +195,11 @@ export async function ubahStokAlat(
     };
   }
 
-  // Memeriksa stok
-  if (!Number.isInteger(stokBaru) || stokBaru < 0) {
+  // Memeriksa stok (0-50 sesuai spesifikasi)
+  if (!Number.isInteger(stokBaru) || stokBaru < 0 || stokBaru > 50) {
     return {
       success: false,
-      message: "Stok alat harus bilangan bulat tidak negatif.",
+      message: "Stok alat harus bilangan bulat antara 0 sampai 50.",
     };
   }
 
