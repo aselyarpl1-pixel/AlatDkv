@@ -1,6 +1,15 @@
 // Mengimpor Link untuk navigasi ke halaman lain
 import Link from "next/link";
 
+// Mengimpor redirect untuk mengarahkan pengguna yang sudah login
+import { redirect } from "next/navigation";
+
+// Mengimpor connection agar halaman dirender saat ada permintaan
+import { connection } from "next/server";
+
+// Mengimpor koneksi Supabase untuk memeriksa sesi login
+import { createClient } from "@/lib/supabase/server";
+
 // Mengimpor komponen formulir login admin
 import FormLogin from "./FormLogin";
 
@@ -8,7 +17,30 @@ import FormLogin from "./FormLogin";
 export const instant = false;
 
 // Membuat komponen halaman login admin
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Memastikan halaman dijalankan saat ada permintaan pengguna
+  await connection();
+
+  // Membuat koneksi Supabase untuk memeriksa pengguna yang login
+  const supabase = await createClient();
+
+  // Mengambil informasi pengguna yang sedang login
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Mengambil email admin dari konfigurasi lingkungan
+  const emailAdmin = process.env.ADMIN_EMAIL;
+
+  // Jika pengguna sudah login sebagai admin, arahkan ke dashboard
+  if (
+    user &&
+    emailAdmin &&
+    user.email?.toLowerCase() === emailAdmin.toLowerCase()
+  ) {
+    redirect("/admin");
+  }
+
   return (
     // Membuat area utama halaman login
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-5 py-10">
