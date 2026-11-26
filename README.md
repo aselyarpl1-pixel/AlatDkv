@@ -71,9 +71,12 @@ menyerahkan, menolak, dan mengembalikan alat, serta mengelola data alat.
 | Tanggal pinjam & kembali bukan Sabtu/Minggu                    |       ✅       |         -          |
 | Tanggal kembali maksimal 3 hari setelah pinjam                 |       ✅       |         ✅ (CHECK) |
 | Jumlah pinjam 1-5 unit                                         |       ✅       |         ✅ (CHECK) |
-| Nama peminjam 3-40 huruf                                       |       ✅       |         -          |
-| Kelas 3-20 huruf                                               |       ✅       |         -          |
-| Keperluan 5-120 huruf                                          |       ✅       |         -          |
+| Nama peminjam 3-40 huruf                                       |       ✅       |         ✅ (CHECK) |
+| Kelas 3-20 huruf                                               |       ✅       |         ✅ (CHECK) |
+| Keperluan 5-120 huruf                                          |       ✅       |         ✅ (CHECK) |
+| Nama alat 3-40 huruf & unik                                    |       ✅       |         ✅ (UNIQUE + CHECK) |
+| Kategori alat hanya 5 nilai yang valid                         |       ✅       |         ✅ (CHECK) |
+| Stok alat 0-50                                                 |       ✅       |         ✅ (CHECK) |
 | Satu peminjam maksimal 2 peminjaman aktif                      |       ✅       |         -          |
 | Stok tersedia = stok - sedang dipinjam                         |       ✅       |         -          |
 | Alat hanya diserahkan jika stok tersedia mencukupi             |       ✅       |         ✅ (trigger) |
@@ -84,9 +87,10 @@ menyerahkan, menolak, dan mengembalikan alat, serta mengelola data alat.
 | Status hanya: menunggu / dipinjam / dikembalikan / ditolak    |       ✅       |         ✅ (CHECK) |
 | Kondisi kembali hanya: baik / rusak ringan / rusak berat      |       ✅       |         ✅ (CHECK) |
 
-> Minimal satu aturan (`jumlah 1-5`, `status valid`, dan `stok tidak kurang dari
-> yang dipinjam`) juga dijaga oleh basis data melalui **CHECK constraint** dan
-> **trigger**, sehingga pelanggaran dari jalur mana pun tetap ditolak.
+> Minimal satu aturan (`jumlah 1-5`, `status valid`, `stok tidak kurang dari
+> yang dipinjam`, panjang teks, kategori, dan stok 0-50) juga dijaga oleh basis
+> data melalui **CHECK constraint**, **UNIQUE constraint**, dan **trigger**,
+> sehingga pelanggaran dari jalur mana pun tetap ditolak.
 
 ---
 
@@ -141,17 +145,33 @@ peminjaman (yang berisi nama, kelas, dan keperluan siswa).
 
 ## 6. Bagian yang Belum Selesai
 
-- Belum ada notifikasi email saat status peminjaman berubah.
-- Belum ada fitur cetak bukti peminjaman.
-- Halaman `/cek` hanya menampilkan satu data berdasarkan nomor + nama; belum
-  mendaftarkan semua riwayat satu peminjam.
-- Riwayat peminjaman per alat belum ditampilkan di detail alat.
+Semua fitur inti sesuai spesifikasi (halaman, aturan bisnis, RLS, dan keamanan)
+sudah diimplementasikan. Beberapa hal berikut masih perlu diselesaikan oleh
+peserta sebelum pengumpulan:
+
+- **Deployment ke Vercel.** Aplikasi baru dijalankan secara lokal (`npm run dev`).
+  Peserta perlu mendeploy proyek ke Vercel dan mengisi alamatnya pada bagian atas
+  berkas ini.
+- **Minimal 12 commit bermakna.** Repositori saat ini baru memiliki beberapa
+  commit. Peserta perlu menambah commit sesuai progres pengerjaan agar memenuhi
+  syarat kualitas repositori.
+- **Notifikasi email (opsional).** Kode notifikasi via Resend sudah ada dan
+  berjalan tanpa error bila belum dikonfigurasi (hanya dicatat di log server).
+  Untuk mengaktifkannya, isi `RESEND_API_KEY`, `FROM_EMAIL`, dan
+  `NOTIFIKASI_EMAIL` di `.env.local`.
+- **Data Supabase milik sendiri.** Skrip `database.sql` disiapkan untuk dijalankan
+  pada proyek Supabase milik peserta sendiri. Pastikan data contoh (8 alat dan
+  8 peminjaman) sudah terisi sebelum demo.
+
+> Fitur tambahan yang sudah tersedia (di luar spesifikasi wajib): tombol cetak
+> bukti peminjaman di `/cek`, riwayat peminjaman per peminjam di `/cek`, dan
+> riwayat peminjaman per alat di `/alat/[id]`.
 
 ---
 
 ## Teknologi
 
-- **Next.js 15** (App Router)
+- **Next.js 16** (App Router)
 - **TypeScript**
 - **Tailwind CSS**
 - **Supabase** (PostgreSQL + Auth)
