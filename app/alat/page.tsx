@@ -197,35 +197,49 @@ export default async function DaftarAlat({
         </div>
       </nav>
 
-      {/* Bagian judul halaman */}
-      <section className="bg-blue-900 px-6 py-14 text-white">
+      {/* Bagian judul halaman dengan breadcrumb */}
+      <section className="border-b border-slate-200 bg-white px-6 py-10">
         <div className="mx-auto max-w-7xl">
-          <p className="text-sm font-semibold uppercase tracking-widest text-blue-200">
-            Katalog Laboratorium
-          </p>
-          <h2 className="mt-3 text-4xl font-bold">Daftar Alat DKV</h2>
-          <p className="mt-4 max-w-2xl leading-relaxed text-blue-100">
+          {/* Navigasi breadcrumb */}
+          <nav className="flex items-center gap-2 text-xs text-slate-500">
+            <Link href="/" className="transition hover:text-blue-700">
+              Beranda
+            </Link>
+            <span>/</span>
+            <span className="font-semibold text-slate-700">Daftar Alat</span>
+          </nav>
+
+          <h2 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
+            Daftar Alat DKV
+          </h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
             Temukan berbagai peralatan laboratorium DKV yang tersedia untuk
             mendukung kegiatan praktik dan pembelajaran.
           </p>
-        </div>
-      </section>
 
-      {/* Bagian ringkasan alat */}
-      <section className="mx-auto grid max-w-7xl gap-5 px-6 py-10 sm:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-500">Jumlah Jenis Alat</p>
-          <h3 className="mt-2 text-3xl font-bold text-blue-900">{totalAlat}</h3>
-        </div>
+          {/* Ringkasan jumlah alat */}
+          <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-slate-600">
+            <span>
+              <span className="text-lg font-bold text-blue-900">
+                {totalAlat}
+              </span>{" "}
+              jenis alat
+            </span>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm text-slate-500">Total Stok Alat</p>
-          <h3 className="mt-2 text-3xl font-bold text-blue-900">{totalStok}</h3>
+            <span className="hidden h-4 w-px bg-slate-200 sm:block" />
+
+            <span>
+              <span className="text-lg font-bold text-blue-900">
+                {totalStok}
+              </span>{" "}
+              total unit
+            </span>
+          </div>
         </div>
       </section>
 
       {/* Bagian filter kategori alat */}
-      <section className="mx-auto max-w-7xl px-6 pb-6">
+      <section className="mx-auto max-w-7xl px-6 pt-8 pb-6">
         <div className="mb-4">
           <h2 className="text-lg font-bold text-slate-900 sm:text-xl">
             Kategori Peralatan

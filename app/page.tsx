@@ -26,6 +26,41 @@ const kategoriAlat = [
   { nama: "Aksesori", nilai: "aksesori", ikon: "🛠️" },
 ];
 
+// Menentukan ikon berdasarkan kategori alat
+function ikonKategori(kategori: string) {
+  switch (kategori) {
+    case "kamera":
+      return "📷";
+    case "pencahayaan":
+      return "💡";
+    case "audio":
+      return "🎙️";
+    case "tablet":
+      return "💻";
+    default:
+      return "🛠️";
+  }
+}
+
+// Langkah-langkah peminjaman yang ditampilkan di beranda
+const langkahPeminjaman = [
+  {
+    nomor: "1",
+    judul: "Pilih Alat",
+    isi: "Telusuri katalog dan pilih peralatan yang ingin dipinjam.",
+  },
+  {
+    nomor: "2",
+    judul: "Ajukan Peminjaman",
+    isi: "Isi formulir pengajuan beserta jumlah dan jadwal pemakaian.",
+  },
+  {
+    nomor: "3",
+    judul: "Cek Status",
+    isi: "Pantau status pengajuan menggunakan nama dan nomor peminjaman.",
+  },
+];
+
 // Halaman utama aplikasi AlatDKV
 export default async function Home() {
   // Membuat koneksi ke database Supabase (pakai admin client agar konsisten)
@@ -104,14 +139,14 @@ export default async function Home() {
         </div>
       </nav>
 
-      {/* Bagian utama atau hero section */}
-      <section className="bg-blue-900 px-4 py-14 text-white sm:px-6 sm:py-16 md:py-20">
+      {/* Bagian hero untuk memperkenalkan aplikasi */}
+      <section className="bg-linear-to-br from-blue-950 via-blue-900 to-blue-800 px-4 py-14 text-white sm:px-6 sm:py-16 md:py-20">
         <div className="mx-auto max-w-7xl">
-          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-blue-200 sm:text-sm">
+          <span className="inline-block rounded-full bg-blue-800/70 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-blue-100 ring-1 ring-inset ring-blue-400/30">
             Laboratorium Desain Komunikasi Visual
-          </p>
+          </span>
 
-          <h2 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
+          <h2 className="mt-5 max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
             Peminjaman Alat Laboratorium DKV Lebih Mudah
           </h2>
 
@@ -131,38 +166,30 @@ export default async function Home() {
 
             <Link
               href="/ajukan"
-              className="w-full rounded-lg border border-white px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-800 sm:w-auto sm:text-base"
+              className="w-full rounded-lg border border-white/70 px-6 py-3 text-center text-sm font-semibold text-white transition hover:bg-blue-800 sm:w-auto sm:text-base"
             >
               Ajukan Peminjaman
             </Link>
           </div>
+
+          {/* Ringkasan jumlah alat ditampilkan langsung di dalam hero */}
+          <div className="mt-10 grid max-w-lg grid-cols-2 gap-6 border-t border-blue-400/25 pt-8">
+            <div>
+              <p className="text-3xl font-bold sm:text-4xl">{totalAlat}</p>
+              <p className="mt-1 text-sm text-blue-200">Jenis alat aktif</p>
+            </div>
+
+            <div>
+              <p className="text-3xl font-bold sm:text-4xl">{totalStok}</p>
+              <p className="mt-1 text-sm text-blue-200">Total unit tersedia</p>
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Bagian ringkasan jumlah alat */}
-      <section className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 py-8 sm:grid-cols-2 sm:gap-5 sm:px-6 sm:py-10">
-        {/* Menampilkan jumlah jenis alat aktif */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <p className="text-sm text-slate-500">Jenis Alat Aktif</p>
-          <h3 className="mt-2 text-3xl font-bold text-blue-900">{totalAlat}</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Jenis peralatan tersedia
-          </p>
-        </div>
-
-        {/* Menampilkan jumlah keseluruhan stok alat */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <p className="text-sm text-slate-500">Total Stok Alat</p>
-          <h3 className="mt-2 text-3xl font-bold text-blue-900">{totalStok}</h3>
-          <p className="mt-1 text-sm text-slate-500">
-            Unit dari seluruh alat aktif
-          </p>
-        </div>
-      </section>
-
-      {/* Bagian kategori alat */}
-      <section className="mx-auto max-w-7xl px-4 pb-10 sm:px-6">
-        <div className="mb-5">
+      {/* Bagian kategori alat dalam bentuk kartu besar */}
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
+        <div className="mb-6">
           <p className="text-xs font-semibold uppercase tracking-wider text-blue-700 sm:text-sm">
             Kategori Peralatan
           </p>
@@ -171,8 +198,8 @@ export default async function Home() {
           </h2>
         </div>
 
-        {/* Menampilkan pilihan kategori dalam bentuk kartu ringkas */}
-        <div className="flex flex-wrap gap-2 sm:gap-3">
+        {/* Menampilkan pilihan kategori dalam bentuk kartu */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {kategoriAlat.map((kategori) => {
             // Menghitung jumlah alat pada setiap kategori
             const jumlah = daftarAlat.filter(
@@ -183,31 +210,78 @@ export default async function Home() {
               <Link
                 key={kategori.nilai}
                 href={`/alat?kategori=${kategori.nilai}`}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+                className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
               >
-                <span className="text-xl">{kategori.ikon}</span>
-                <span className="text-sm font-semibold text-slate-900">
-                  {kategori.nama}
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-2xl">
+                  {kategori.ikon}
                 </span>
-                <span className="text-xs text-slate-500">({jumlah})</span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-slate-900 group-hover:text-blue-800">
+                    {kategori.nama}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-slate-500">
+                    {jumlah} jenis alat
+                  </span>
+                </span>
+
+                <span className="text-blue-400 transition group-hover:translate-x-0.5 group-hover:text-blue-700">
+                  →
+                </span>
               </Link>
             );
           })}
         </div>
       </section>
 
-      {/* Bagian daftar alat yang diambil dari Supabase */}
-      <section className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 sm:pb-16">
-        <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+      {/* Bagian langkah-langkah peminjaman */}
+      <section className="border-y border-slate-200 bg-white px-4 py-12 sm:px-6 sm:py-14">
+        <div className="mx-auto max-w-7xl">
+          <div className="mb-8 text-center">
+            <p className="text-xs font-semibold uppercase tracking-wider text-blue-700 sm:text-sm">
+              Alur Peminjaman
+            </p>
+            <h2 className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">
+              Cara Meminjam Alat
+            </h2>
+          </div>
+
+          {/* Menampilkan tiga langkah peminjaman */}
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {langkahPeminjaman.map((langkah) => (
+              <div
+                key={langkah.nomor}
+                className="rounded-xl border border-slate-200 bg-slate-50 p-6"
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-900 text-sm font-bold text-white">
+                  {langkah.nomor}
+                </span>
+
+                <h3 className="mt-4 font-bold text-slate-900">
+                  {langkah.judul}
+                </h3>
+
+                <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                  {langkah.isi}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Bagian sorotan alat unggulan (hanya beberapa alat) */}
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-14">
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-blue-700 sm:text-sm">
               Katalog Peralatan
             </p>
-            <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl">
-              Alat Laboratorium
+            <h2 className="mt-2 text-xl font-bold text-slate-900 sm:text-2xl">
+              Alat Pilihan
             </h2>
-            <p className="mt-2 text-sm text-slate-500 sm:text-base">
-              Berikut peralatan yang dapat dipinjam.
+            <p className="mt-2 text-sm text-slate-500">
+              Beberapa peralatan yang dapat dipinjam.
             </p>
           </div>
 
@@ -228,53 +302,29 @@ export default async function Home() {
             </p>
           </div>
         ) : (
-          /* Menampilkan setiap alat dalam bentuk kartu responsif */
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-            {daftarAlat.map((item) => (
-              <div
+          /* Menampilkan 3 alat pertama dalam bentuk kartu ringkas */
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {daftarAlat.slice(0, 3).map((item) => (
+              <Link
                 key={item.id}
-                className="flex min-w-0 flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg sm:p-6"
+                href={`/alat/${item.id}`}
+                className="group flex items-center gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
               >
-                {/* Ikon berdasarkan kategori alat */}
-                <div className="mb-5 flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-2xl">
-                  {item.kategori === "kamera"
-                    ? "📷"
-                    : item.kategori === "pencahayaan"
-                      ? "💡"
-                      : item.kategori === "audio"
-                        ? "🎙️"
-                        : item.kategori === "tablet"
-                          ? "💻"
-                          : "🛠️"}
-                </div>
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-2xl">
+                  {ikonKategori(item.kategori)}
+                </span>
 
-                {/* Menampilkan nama dan kategori alat */}
-                <h3 className="text-lg font-bold text-slate-900 sm:text-xl">
-                  {item.nama}
-                </h3>
-
-                <p className="mt-1 text-sm capitalize text-slate-500">
-                  {item.kategori}
-                </p>
-
-                {/* Menampilkan keterangan alat dari database */}
-                <p className="mt-4 min-h-10 flex-1 text-sm leading-relaxed text-slate-600">
-                  {item.keterangan || "Tidak ada keterangan."}
-                </p>
-
-                {/* Menampilkan jumlah stok alat */}
-                <div className="mt-5 flex items-center justify-between gap-2 border-t border-slate-100 pt-4">
-                  <span className="text-sm text-slate-500">Stok tersedia</span>
-
-                  <span className="shrink-0 font-bold text-blue-900">
-                    {item.stok} unit
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-slate-900 group-hover:text-blue-800">
+                    {item.nama}
                   </span>
-                </div>
 
-                {/* Menampilkan status ketersediaan alat */}
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                  <span className="mt-0.5 block text-xs capitalize text-slate-500">
+                    {item.kategori} · {item.stok} unit
+                  </span>
+
                   <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                       item.stok > 0
                         ? "bg-green-100 text-green-700"
                         : "bg-red-100 text-red-700"
@@ -282,16 +332,8 @@ export default async function Home() {
                   >
                     {item.stok > 0 ? "Tersedia" : "Stok Habis"}
                   </span>
-
-                  {/* Link menuju halaman detail alat */}
-                  <Link
-                    href={`/alat/${item.id}`}
-                    className="text-sm font-semibold text-blue-700 transition hover:text-blue-900"
-                  >
-                    Detail →
-                  </Link>
-                </div>
-              </div>
+                </span>
+              </Link>
             ))}
           </div>
         )}
