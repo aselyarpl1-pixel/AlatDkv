@@ -261,6 +261,8 @@ export default async function CekPeminjaman({
                 id="peminjam"
                 name="peminjam"
                 required
+                minLength={3}
+                maxLength={40}
                 defaultValue={peminjam}
                 placeholder="Masukkan nama lengkap"
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
@@ -413,7 +415,7 @@ export default async function CekPeminjaman({
             </p>
 
             <div className="mt-5 overflow-x-auto">
-              <table className="w-full min-w-160 text-left text-sm">
+              <table className="w-full min-w-[48rem] text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
                     <th className="py-3 pr-4 font-semibold">No.</th>
