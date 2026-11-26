@@ -37,6 +37,7 @@ export default function FormUbahStok({
           type="number"
           name="stok"
           min={sedangDipinjam}
+          max={50}
           defaultValue={stok}
           className="w-16 rounded-md border border-gray-300 px-2 py-1 text-sm outline-none focus:border-blue-500"
         />
