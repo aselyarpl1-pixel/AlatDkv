@@ -1,13 +1,10 @@
 // Mengimpor Link untuk navigasi antarhalaman Next.js
 import Link from "next/link";
 
-// Mengimpor connection agar halaman dirender saat ada permintaan
-import { connection } from "next/server";
+// Mengimpor koneksi Supabase khusus server untuk mengambil data
+import { createAdminClient } from "@/lib/supabase/admin";
 
-// Mengimpor fungsi koneksi Supabase dari sisi server
-import { createClient } from "@/lib/supabase/server";
-
-// Mengizinkan halaman menunggu data dinamis sebelum ditampilkan
+// Halaman mengambil data dinamis dari database, tidak bisa di-prerender statis
 export const instant = false;
 
 // Membuat tipe data Alat sesuai struktur tabel di Supabase
@@ -31,11 +28,8 @@ const kategoriAlat = [
 
 // Halaman utama aplikasi AlatDKV
 export default async function Home() {
-  // Menunggu koneksi agar halaman tidak diprerender saat menggunakan nilai waktu
-  await connection();
-
-  // Membuat koneksi ke database Supabase
-  const supabase = await createClient();
+  // Membuat koneksi ke database Supabase (pakai admin client agar konsisten)
+  const supabase = createAdminClient();
 
   // Mengambil data alat yang masih aktif dari tabel alat
   const { data: alat, error } = await supabase

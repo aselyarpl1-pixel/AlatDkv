@@ -4,7 +4,7 @@ import Link from "next/link";
 // Mengimpor createAdminClient untuk mengakses database Supabase
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Mengizinkan halaman mengambil data secara dinamis
+// Halaman mengambil data dinamis dari database, tidak bisa di-prerender statis
 export const instant = false;
 
 // Membuat tipe data alat sesuai tabel Supabase
@@ -67,12 +67,21 @@ export default async function DaftarAlat({
   // Membuat koneksi ke database Supabase
   const supabase = createAdminClient();
 
-  // Mengambil semua alat yang masih aktif
-  const { data: alat, error: errorAlat } = await supabase
-    .from("alat")
-    .select("id, nama, kategori, stok, keterangan, aktif")
-    .eq("aktif", true)
-    .order("id", { ascending: true });
+  // Mengambil data alat dan peminjaman aktif secara paralel untuk mempercepat
+  const [hasilAlat, hasilPeminjaman] = await Promise.all([
+    supabase
+      .from("alat")
+      .select("id, nama, kategori, stok, keterangan, aktif")
+      .eq("aktif", true)
+      .order("id", { ascending: true }),
+    supabase
+      .from("peminjaman_alat")
+      .select("alat_id, jumlah")
+      .eq("status", "dipinjam"),
+  ]);
+
+  const { data: alat, error: errorAlat } = hasilAlat;
+  const { data: peminjaman, error: errorPeminjaman } = hasilPeminjaman;
 
   // Memeriksa kesalahan saat mengambil data alat
   if (errorAlat) {
@@ -94,12 +103,6 @@ export default async function DaftarAlat({
 
   // Mengubah hasil query menjadi array bertipe Alat
   const daftarAlat: Alat[] = (alat ?? []) as Alat[];
-
-  // Mengambil data peminjaman yang sedang berlangsung
-  const { data: peminjaman, error: errorPeminjaman } = await supabase
-    .from("peminjaman_alat")
-    .select("alat_id, jumlah")
-    .eq("status", "dipinjam");
 
   // Memeriksa kesalahan saat mengambil data peminjaman
   if (errorPeminjaman) {

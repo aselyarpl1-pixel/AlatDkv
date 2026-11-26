@@ -97,16 +97,58 @@ export default async function CekPeminjaman({
 
   // Memeriksa data jika formulir sudah dikirim
   if (nomor || peminjam) {
-    // Memeriksa kelengkapan data
-    if (!nomor || !peminjam || !/^[1-9]\d*$/.test(nomor)) {
-      pesanError = "Masukkan nomor peminjaman dan nama peminjam dengan benar.";
+    // Nama peminjam wajib diisi (nomor peminjaman bersifat opsional)
+    if (!peminjam) {
+      pesanError = "Masukkan nama peminjam untuk mencari data peminjaman.";
+    } else if (nomor && !/^[1-9]\d*$/.test(nomor)) {
+      pesanError = "Nomor peminjaman harus berupa angka positif.";
     } else {
       try {
         // Membuat koneksi ke Supabase
         const supabase = createAdminClient();
 
-        // Mencari peminjaman berdasarkan nomor dan nama
-        const { data, error } = await supabase
+        // Jika nomor peminjaman diisi, cari detail peminjaman spesifik
+        if (nomor) {
+          const { data, error } = await supabase
+            .from("peminjaman_alat")
+            .select(
+              `
+              id,
+              peminjam,
+              keperluan,
+              jumlah,
+              tgl_pinjam,
+              tgl_kembali,
+              status,
+              alasan_tolak,
+              kondisi_kembali,
+              tgl_dikembalikan,
+              alat (
+                nama
+              )
+            `,
+            )
+            .eq("id", nomor)
+            .ilike("peminjam", peminjam)
+            .maybeSingle();
+
+          if (error) {
+            console.error("Gagal mengambil data peminjaman:", error.message);
+            pesanError = "Terjadi kesalahan saat mencari data peminjaman.";
+          } else if (data) {
+            if (data.peminjam.toLowerCase() === peminjam.toLowerCase()) {
+              dataPeminjaman = data as unknown as Peminjaman;
+            } else {
+              pesanError = "Nomor atau nama peminjam tidak cocok.";
+            }
+          } else {
+            pesanError = "Nomor atau nama peminjam tidak cocok.";
+          }
+        }
+
+        // Selalu ambil seluruh riwayat peminjaman milik nama yang sama
+        // agar pengguna dapat melihat daftar beserta nomor peminjamannya
+        const { data: riwayat, error: errorRiwayat } = await supabase
           .from("peminjaman_alat")
           .select(
             `
@@ -125,50 +167,24 @@ export default async function CekPeminjaman({
             )
           `,
           )
-          .eq("id", nomor)
           .ilike("peminjam", peminjam)
-          .maybeSingle();
+          .order("id", { ascending: false });
 
-        // Memeriksa hasil pencarian
-        if (error) {
-          console.error("Gagal mengambil data peminjaman:", error.message);
-          pesanError = "Terjadi kesalahan saat mencari data peminjaman.";
-        } else if (data) {
-          // Memastikan nama cocok tanpa membedakan huruf besar dan kecil
-          if (data.peminjam.toLowerCase() === peminjam.toLowerCase()) {
-            dataPeminjaman = data as unknown as Peminjaman;
-
-            // Mengambil seluruh riwayat peminjaman milik nama yang sama
-            const { data: riwayat, error: errorRiwayat } = await supabase
-              .from("peminjaman_alat")
-              .select(
-                `
-                id,
-                peminjam,
-                keperluan,
-                jumlah,
-                tgl_pinjam,
-                tgl_kembali,
-                status,
-                alasan_tolak,
-                kondisi_kembali,
-                tgl_dikembalikan,
-                alat (
-                  nama
-                )
-              `,
-              )
-              .ilike("peminjam", peminjam)
-              .order("id", { ascending: false });
-
-            if (!errorRiwayat && riwayat) {
-              riwayatPeminjaman = riwayat as unknown as Peminjaman[];
-            }
-          } else {
-            pesanError = "Nomor atau nama peminjam tidak cocok.";
+        if (errorRiwayat) {
+          console.error(
+            "Gagal mengambil riwayat peminjaman:",
+            errorRiwayat.message,
+          );
+          if (!pesanError) {
+            pesanError = "Gagal memuat riwayat peminjaman.";
           }
-        } else {
-          pesanError = "Nomor atau nama peminjam tidak cocok.";
+        } else if (riwayat) {
+          riwayatPeminjaman = riwayat as unknown as Peminjaman[];
+        }
+
+        // Jika riwayat kosong dan belum ada error, beritahu bahwa nama tidak ditemukan
+        if (riwayatPeminjaman.length === 0 && !pesanError) {
+          pesanError = "Tidak ada data peminjaman atas nama tersebut.";
         }
       } catch (error) {
         console.error("Kesalahan koneksi Supabase:", error);
@@ -181,7 +197,7 @@ export default async function CekPeminjaman({
   const status = dataPeminjaman ? statusPeminjaman(dataPeminjaman) : "";
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main className="flex min-h-screen flex-col bg-slate-50">
       {/* Navigasi halaman */}
       <nav className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
@@ -221,7 +237,8 @@ export default async function CekPeminjaman({
           </h1>
 
           <p className="mt-3 text-slate-500">
-            Masukkan nomor peminjaman dan nama untuk melihat status pengajuan.
+            Cukup masukkan nama Anda untuk melihat seluruh riwayat peminjaman.
+            Isi nomor peminjaman jika ingin melihat detail satu pengajuan.
           </p>
         </div>
 
@@ -233,7 +250,7 @@ export default async function CekPeminjaman({
                 htmlFor="nomor"
                 className="mb-2 block text-sm font-semibold text-slate-700"
               >
-                Nomor Peminjaman
+                Nomor Peminjaman <span className="text-slate-400">(opsional)</span>
               </label>
 
               <input
@@ -241,9 +258,8 @@ export default async function CekPeminjaman({
                 id="nomor"
                 name="nomor"
                 min="1"
-                required
                 defaultValue={nomor}
-                placeholder="Masukkan nomor peminjaman"
+                placeholder="Kosongkan jika tidak tahu nomornya"
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               />
             </div>
@@ -411,14 +427,14 @@ export default async function CekPeminjaman({
               <span className="font-semibold text-slate-700">
                 {riwayatPeminjaman[0]?.peminjam}
               </span>
-              .
+              . Klik nomor biru untuk melihat detail peminjaman tersebut.
             </p>
 
             <div className="mt-5 overflow-x-auto">
               <table className="w-full min-w-48rem text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
-                    <th className="py-3 pr-4 font-semibold">No.</th>
+                    <th className="py-3 pr-4 font-semibold">Nomor</th>
                     <th className="py-3 pr-4 font-semibold">Alat</th>
                     <th className="py-3 pr-4 font-semibold">Jumlah</th>
                     <th className="py-3 pr-4 font-semibold">Tgl Pinjam</th>
@@ -427,7 +443,7 @@ export default async function CekPeminjaman({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {riwayatPeminjaman.map((item, index) => {
+                  {riwayatPeminjaman.map((item) => {
                     const statusItem = statusPeminjaman(item);
                     const adalahDataSaatIni =
                       dataPeminjaman && item.id === dataPeminjaman.id;
@@ -440,12 +456,13 @@ export default async function CekPeminjaman({
                         }
                       >
                         <td className="py-3 pr-4 text-slate-500">
-                          {index + 1}
-                          {adalahDataSaatIni && (
-                            <span className="ml-1 text-[10px] font-semibold text-blue-600">
-                              (ini)
-                            </span>
-                          )}
+                          {/* Menampilkan nomor peminjaman yang bisa diklik untuk membuka detail */}
+                          <Link
+                            href={`/cek?nomor=${item.id}&peminjam=${encodeURIComponent(item.peminjam)}`}
+                            className="font-semibold text-blue-600 hover:underline"
+                          >
+                            #{item.id}
+                          </Link>
                         </td>
                         <td className="py-3 pr-4 font-medium text-slate-800">
                           {item.alat?.nama || "-"}
@@ -477,8 +494,10 @@ export default async function CekPeminjaman({
       </section>
 
       {/* Footer halaman */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-sm text-slate-500 print:hidden">
-        © 2026 AlatDKV. Sistem Informasi Peminjaman Alat Laboratorium DKV.
+      <footer className="mt-auto border-t border-slate-200 bg-white px-6 py-6 text-center print:hidden">
+        <p className="text-sm text-slate-500">
+          © 2026 AlatDKV. Sistem Peminjaman Alat Laboratorium DKV.
+        </p>
       </footer>
     </main>
   );

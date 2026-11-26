@@ -7,7 +7,7 @@ import { notFound } from "next/navigation";
 // Mengimpor koneksi Supabase khusus server
 import { createAdminClient } from "@/lib/supabase/admin";
 
-// Mengizinkan halaman mengambil data secara dinamis
+// Halaman mengambil data dinamis dari database, tidak bisa di-prerender statis
 export const instant = false;
 
 // Membuat tipe data alat
@@ -106,12 +106,24 @@ export default async function DetailAlat({
     notFound();
   }
 
-  // Mengambil peminjaman yang sedang berlangsung
-  const { data: peminjamanData, error: peminjamanError } = await supabase
-    .from("peminjaman_alat")
-    .select("jumlah")
-    .eq("alat_id", alat.id)
-    .eq("status", "dipinjam");
+  // Mengambil peminjaman aktif dan riwayat secara paralel untuk mempercepat
+  const [hasilPeminjaman, hasilRiwayat] = await Promise.all([
+    supabase
+      .from("peminjaman_alat")
+      .select("jumlah")
+      .eq("alat_id", alat.id)
+      .eq("status", "dipinjam"),
+    supabase
+      .from("peminjaman_alat")
+      .select(
+        "id, peminjam, kelas, jumlah, tgl_pinjam, tgl_kembali, status, tgl_dikembalikan, kondisi_kembali",
+      )
+      .eq("alat_id", alat.id)
+      .order("id", { ascending: false }),
+  ]);
+
+  const { data: peminjamanData, error: peminjamanError } = hasilPeminjaman;
+  const { data: riwayatData, error: riwayatError } = hasilRiwayat;
 
   // Memeriksa kesalahan pengambilan data peminjaman
   if (peminjamanError) {
@@ -133,15 +145,6 @@ export default async function DetailAlat({
 
   // Menentukan apakah alat bisa diajukan
   const bisaDiajukan = stokTersedia > 0;
-
-  // Mengambil riwayat peminjaman alat ini (semua status)
-  const { data: riwayatData, error: riwayatError } = await supabase
-    .from("peminjaman_alat")
-    .select(
-      "id, peminjam, kelas, jumlah, tgl_pinjam, tgl_kembali, status, tgl_dikembalikan, kondisi_kembali",
-    )
-    .eq("alat_id", alat.id)
-    .order("id", { ascending: false });
 
   if (riwayatError) {
     console.error(

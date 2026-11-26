@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { ajukanPeminjaman, type FormState, type NilaiForm } from "./actions";
 
 // Tipe data alat untuk pilihan formulir
@@ -27,6 +28,7 @@ const initialState: FormState = {
   message: "",
   errors: {},
   values: nilaiAwal,
+  nomorPeminjaman: null,
 };
 
 // Komponen formulir pengajuan peminjaman
@@ -76,7 +78,32 @@ export default function FormPengajuan({
           role="status"
           className="rounded-xl bg-green-100 p-4 text-sm font-medium text-green-700"
         >
-          {state.message}
+          <p>{state.message}</p>
+
+          {/* Menampilkan nomor peminjaman yang harus dicatat pengguna */}
+          {state.nomorPeminjaman != null && (
+            <div className="mt-3 rounded-lg border border-green-300 bg-white p-4 text-slate-700">
+              <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
+                Nomor Peminjaman Anda
+              </p>
+
+              <p className="mt-1 text-3xl font-bold text-slate-800">
+                #{state.nomorPeminjaman}
+              </p>
+
+              <p className="mt-2 text-xs text-slate-600">
+                Simpan nomor ini. Gunakan nomor beserta nama Anda untuk mengecek
+                status pengajuan.
+              </p>
+
+              <Link
+                href="/cek"
+                className="mt-3 inline-block rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-blue-700"
+              >
+                Cek Status Peminjaman
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

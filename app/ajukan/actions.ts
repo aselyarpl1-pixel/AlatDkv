@@ -22,6 +22,8 @@ export type FormState = {
   message: string;
   errors: GalatForm;
   values: NilaiForm;
+  // Nomor peminjaman yang dihasilkan setelah pengajuan berhasil (untuk dicatat pengguna)
+  nomorPeminjaman?: number | null;
 };
 
 // Mengambil tanggal hari ini berdasarkan zona waktu Indonesia
@@ -296,20 +298,24 @@ export async function ajukanPeminjaman(
     };
   }
 
-  // Menyimpan pengajuan ke tabel Supabase
-  const { error: errorSimpan } = await supabase.from("peminjaman_alat").insert({
-    alat_id: alatIdAngka,
-    peminjam: nama,
-    kelas,
-    keperluan,
-    jumlah: jumlahAngka,
-    tgl_pinjam: tglPinjam,
-    tgl_kembali: tglKembali,
-    status: "menunggu",
-  });
+  // Menyimpan pengajuan ke tabel Supabase dan mengambil kembali nomor (id) yang dibuat
+  const { data: hasilSimpan, error: errorSimpan } = await supabase
+    .from("peminjaman_alat")
+    .insert({
+      alat_id: alatIdAngka,
+      peminjam: nama,
+      kelas,
+      keperluan,
+      jumlah: jumlahAngka,
+      tgl_pinjam: tglPinjam,
+      tgl_kembali: tglKembali,
+      status: "menunggu",
+    })
+    .select("id")
+    .single();
 
-  if (errorSimpan) {
-    console.error("Gagal menyimpan pengajuan:", errorSimpan.message);
+  if (errorSimpan || !hasilSimpan) {
+    console.error("Gagal menyimpan pengajuan:", errorSimpan?.message);
 
     return {
       success: false,
@@ -319,11 +325,12 @@ export async function ajukanPeminjaman(
     };
   }
 
-  // Mengirim pesan jika pengajuan berhasil
+  // Mengirim pesan jika pengajuan berhasil, sertakan nomor peminjaman
   return {
     success: true,
     message: "Pengajuan berhasil dikirim. Silakan tunggu persetujuan admin.",
     errors: {},
+    nomorPeminjaman: hasilSimpan.id,
     values: {
       alat_id: "",
       peminjam: "",
