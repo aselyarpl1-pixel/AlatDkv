@@ -5,7 +5,8 @@ Desain Komunikasi Visual (DKV). Siswa dapat melihat alat yang tersedia,
 mengajukan peminjaman, dan mengecek status pengajuan. Admin dapat menyetujui,
 menyerahkan, menolak, dan mengembalikan alat, serta mengelola data alat.
 
-**Alamat Vercel:** https://alatdkv.vercel.app
+**Alamat Vercel:** https://alatdkv.vercel.app/
+
 > _Ganti dengan alamat Vercel Anda setelah melakukan deployment._
 
 ---
@@ -23,15 +24,15 @@ menyerahkan, menolak, dan mengembalikan alat, serta mengelola data alat.
 4. Salin berkas `.env.local.example` menjadi `.env.local` dan isi variabel
    lingkungan berikut (tanpa menuliskan nilainya di sini):
 
-   | Nama Variabel                    | Keterangan                                  |
-   | -------------------------------- | ------------------------------------------- |
-   | `SUPABASE_URL`                   | URL proyek Supabase Anda                    |
-   | `SUPABASE_PUBLISHABLE_KEY`       | Kunci publik (anon) Supabase Anda           |
-   | `SUPABASE_SECRET_KEY`            | Kunci rahasia (service_role) Supabase Anda  |
-   | `NEXT_PUBLIC_SUPABASE_URL`       | Sama dengan `SUPABASE_URL` (untuk browser)  |
-   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Sama dengan `SUPABASE_PUBLISHABLE_KEY` |
-   | `ADMIN_EMAIL`                    | Email akun admin di Supabase                |
-   | `ADMIN_PASSWORD`                 | Kata sandi akun admin di Supabase           |
+   | Nama Variabel                          | Keterangan                                 |
+   | -------------------------------------- | ------------------------------------------ |
+   | `SUPABASE_URL`                         | URL proyek Supabase Anda                   |
+   | `SUPABASE_PUBLISHABLE_KEY`             | Kunci publik (anon) Supabase Anda          |
+   | `SUPABASE_SECRET_KEY`                  | Kunci rahasia (service_role) Supabase Anda |
+   | `NEXT_PUBLIC_SUPABASE_URL`             | Sama dengan `SUPABASE_URL` (untuk browser) |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Sama dengan `SUPABASE_PUBLISHABLE_KEY`     |
+   | `ADMIN_EMAIL`                          | Email akun admin di Supabase               |
+   | `ADMIN_PASSWORD`                       | Kata sandi akun admin di Supabase          |
 
 5. Jalankan server pengembangan:
 
@@ -48,47 +49,47 @@ menyerahkan, menolak, dan mengembalikan alat, serta mengelola data alat.
 
 ## 2. Daftar Halaman dan Fungsinya
 
-| Rute            | Fungsi                                                                 |
-| --------------- | ---------------------------------------------------------------------- |
-| `/`             | Beranda: menampilkan alat yang aktif beserta stok tersedia.           |
-| `/alat`         | Daftar alat aktif dengan saringan kategori lewat URL `?kategori=`.    |
-| `/alat/[id]`    | Detail alat: stok tersedia dan tombol ajukan peminjaman.              |
-| `/ajukan`       | Formulir pengajuan peminjaman (alat, tanggal, jumlah, data peminjam). |
-| `/cek`          | Mengecek status peminjaman berdasarkan nomor + nama peminjam.         |
-| `/admin`        | Dashboard admin: daftar pengajuan, saring status (termasuk terlambat),|
-|                 | serahkan / tolak / kembalikan alat.                                    |
-| `/admin/alat`   | Kelola alat: tambah, ubah stok, aktif/nonaktif, hapus.                |
-| `/login`        | Login admin.                                                           |
+| Rute          | Fungsi                                                                 |
+| ------------- | ---------------------------------------------------------------------- |
+| `/`           | Beranda: menampilkan alat yang aktif beserta stok tersedia.            |
+| `/alat`       | Daftar alat aktif dengan saringan kategori lewat URL `?kategori=`.     |
+| `/alat/[id]`  | Detail alat: stok tersedia dan tombol ajukan peminjaman.               |
+| `/ajukan`     | Formulir pengajuan peminjaman (alat, tanggal, jumlah, data peminjam).  |
+| `/cek`        | Mengecek status peminjaman berdasarkan nomor + nama peminjam.          |
+| `/admin`      | Dashboard admin: daftar pengajuan, saring status (termasuk terlambat), |
+|               | serahkan / tolak / kembalikan alat.                                    |
+| `/admin/alat` | Kelola alat: tambah, ubah stok, aktif/nonaktif, hapus.                 |
+| `/login`      | Login admin.                                                           |
 
 ---
 
 ## 3. Aturan Bisnis dan Lapisan Penerapannya
 
-| Aturan Bisnis                                                  | Lapisan Server | Lapisan Basis Data |
-| -------------------------------------------------------------- | :------------: | :----------------: |
-| Alat harus aktif untuk dapat dipinjam                          |       ✅       |         -          |
-| Tanggal pinjam tidak lampau & maksimal 14 hari ke depan        |       ✅       |         -          |
-| Tanggal pinjam & kembali bukan Sabtu/Minggu                    |       ✅       |         -          |
-| Tanggal kembali maksimal 3 hari setelah pinjam                 |       ✅       |         ✅ (CHECK) |
-| Jumlah pinjam 1-5 unit                                         |       ✅       |         ✅ (CHECK) |
-| Nama peminjam 3-40 huruf                                       |       ✅       |         ✅ (CHECK) |
-| Kelas 3-20 huruf                                               |       ✅       |         ✅ (CHECK) |
-| Keperluan 5-120 huruf                                          |       ✅       |         ✅ (CHECK) |
-| Nama alat 3-40 huruf & unik                                    |       ✅       |         ✅ (UNIQUE + CHECK) |
-| Kategori alat hanya 5 nilai yang valid                         |       ✅       |         ✅ (CHECK) |
-| Stok alat 0-50                                                 |       ✅       |         ✅ (CHECK) |
-| Satu peminjam maksimal 2 peminjaman aktif                      |       ✅       |         -          |
-| Stok tersedia = stok - sedang dipinjam                         |       ✅       |         -          |
-| Alat hanya diserahkan jika stok tersedia mencukupi             |       ✅       |         ✅ (trigger) |
-| Penolakan wajib menyertakan alasan (min 5 huruf)              |       ✅       |         -          |
-| Pengembalian wajib mencatat kondisi & tanggal otomatis         |       ✅       |         -          |
-| Admin tidak boleh menurunkan stok di bawah yang dipinjam       |       ✅       |         ✅ (trigger) |
-| Alat dengan riwayat peminjaman tidak dapat dihapus            |       ✅       |         -          |
-| Status hanya: menunggu / dipinjam / dikembalikan / ditolak    |       ✅       |         ✅ (CHECK) |
-| Kondisi kembali hanya: baik / rusak ringan / rusak berat      |       ✅       |         ✅ (CHECK) |
+| Aturan Bisnis                                              | Lapisan Server | Lapisan Basis Data  |
+| ---------------------------------------------------------- | :------------: | :-----------------: |
+| Alat harus aktif untuk dapat dipinjam                      |       ✅       |          -          |
+| Tanggal pinjam tidak lampau & maksimal 14 hari ke depan    |       ✅       |          -          |
+| Tanggal pinjam & kembali bukan Sabtu/Minggu                |       ✅       |          -          |
+| Tanggal kembali maksimal 3 hari setelah pinjam             |       ✅       |     ✅ (CHECK)      |
+| Jumlah pinjam 1-5 unit                                     |       ✅       |     ✅ (CHECK)      |
+| Nama peminjam 3-40 huruf                                   |       ✅       |     ✅ (CHECK)      |
+| Kelas 3-20 huruf                                           |       ✅       |     ✅ (CHECK)      |
+| Keperluan 5-120 huruf                                      |       ✅       |     ✅ (CHECK)      |
+| Nama alat 3-40 huruf & unik                                |       ✅       | ✅ (UNIQUE + CHECK) |
+| Kategori alat hanya 5 nilai yang valid                     |       ✅       |     ✅ (CHECK)      |
+| Stok alat 0-50                                             |       ✅       |     ✅ (CHECK)      |
+| Satu peminjam maksimal 2 peminjaman aktif                  |       ✅       |          -          |
+| Stok tersedia = stok - sedang dipinjam                     |       ✅       |          -          |
+| Alat hanya diserahkan jika stok tersedia mencukupi         |       ✅       |    ✅ (trigger)     |
+| Penolakan wajib menyertakan alasan (min 5 huruf)           |       ✅       |          -          |
+| Pengembalian wajib mencatat kondisi & tanggal otomatis     |       ✅       |          -          |
+| Admin tidak boleh menurunkan stok di bawah yang dipinjam   |       ✅       |    ✅ (trigger)     |
+| Alat dengan riwayat peminjaman tidak dapat dihapus         |       ✅       |          -          |
+| Status hanya: menunggu / dipinjam / dikembalikan / ditolak |       ✅       |     ✅ (CHECK)      |
+| Kondisi kembali hanya: baik / rusak ringan / rusak berat   |       ✅       |     ✅ (CHECK)      |
 
 > Minimal satu aturan (`jumlah 1-5`, `status valid`, `stok tidak kurang dari
-> yang dipinjam`, panjang teks, kategori, dan stok 0-50) juga dijaga oleh basis
+yang dipinjam`, panjang teks, kategori, dan stok 0-50) juga dijaga oleh basis
 > data melalui **CHECK constraint**, **UNIQUE constraint**, dan **trigger**,
 > sehingga pelanggaran dari jalur mana pun tetap ditolak.
 
@@ -109,10 +110,10 @@ menyerahkan, menolak, dan mengembalikan alat, serta mengelola data alat.
 
 RLS diaktifkan pada **kedua tabel**:
 
-| Tabel             | Kunci Publik (anon)       | Kunci Rahasia (service_role) |
-| ----------------- | ------------------------- | ---------------------------- |
-| `alat`            | baca saja (SELECT)        | baca, tambah, ubah, hapus    |
-| `peminjaman_alat` | **tidak ada** (ditolak)   | baca, tambah, ubah, hapus    |
+| Tabel             | Kunci Publik (anon)     | Kunci Rahasia (service_role) |
+| ----------------- | ----------------------- | ---------------------------- |
+| `alat`            | baca saja (SELECT)      | baca, tambah, ubah, hapus    |
+| `peminjaman_alat` | **tidak ada** (ditolak) | baca, tambah, ubah, hapus    |
 
 Artinya, siapa pun yang memakai kunci publik **tidak dapat membaca** data
 peminjaman (yang berisi nama, kelas, dan keperluan siswa).
@@ -129,13 +130,13 @@ peminjaman (yang berisi nama, kelas, dan keperluan siswa).
 
 ## 5. Masalah yang Ditemui dan Perbaikannya
 
-**Masalah:** Tanggal pinjam awalnya harus *minimal 14 hari* dari hari ini.
+**Masalah:** Tanggal pinjam awalnya harus _minimal 14 hari_ dari hari ini.
 
 - **Gejala:** Saat mengajukan peminjaman, pengguna tidak dapat memilih tanggal
   yang dekat dengan hari ini; form selalu menolak dengan pesan "Tanggal pinjam
   harus minimal 14 hari dari hari ini."
 - **Penyebab:** Logika validasi di `app/ajukan/actions.ts` terbalik. Spesifikasi
-  menyatakan "paling jauh 14 hari ke depan" (artinya *maksimal* 14 hari), tetapi
+  menyatakan "paling jauh 14 hari ke depan" (artinya _maksimal_ 14 hari), tetapi
   kode memeriksa `tgl_pinjam < hariIni + 14` dan menolaknya.
 - **Perbaikan:** Mengubah kondisi menjadi `tgl_pinjam >= hariIni` dan
   `tgl_pinjam <= hariIni + 14`, serta mengubah atribut `min`/`max` pada input
