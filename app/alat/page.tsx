@@ -198,40 +198,39 @@ export default async function DaftarAlat({
       </nav>
 
       {/* Bagian judul halaman dengan breadcrumb */}
-      <section className="border-b border-slate-200 bg-white px-6 py-10">
+      <section className="border-b border-blue-800/30 bg-linear-to-br from-[#1e326f] via-[#1e3a8a] to-[#1d4ed8] px-6 py-10">
         <div className="mx-auto max-w-7xl">
           {/* Navigasi breadcrumb */}
-          <nav className="flex items-center gap-2 text-xs text-slate-500">
-            <Link href="/" className="transition hover:text-blue-700">
+          <nav className="flex items-center gap-2 text-xs text-blue-100">
+            <Link href="/" className="transition hover:text-white">
               Beranda
             </Link>
             <span>/</span>
-            <span className="font-semibold text-slate-700">Daftar Alat</span>
+            <span className="font-semibold text-white">Daftar Alat</span>
           </nav>
 
-          <h2 className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl">
+          {/* Judul halaman */}
+          <h2 className="mt-3 text-3xl font-bold text-white sm:text-4xl">
             Daftar Alat DKV
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">
+
+          {/* Deskripsi halaman */}
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-blue-100 sm:text-base">
             Temukan berbagai peralatan laboratorium DKV yang tersedia untuk
             mendukung kegiatan praktik dan pembelajaran.
           </p>
 
           {/* Ringkasan jumlah alat */}
-          <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-slate-600">
+          <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-blue-100">
             <span>
-              <span className="text-lg font-bold text-blue-900">
-                {totalAlat}
-              </span>{" "}
+              <span className="text-lg font-bold text-white">{totalAlat}</span>{" "}
               jenis alat
             </span>
 
-            <span className="hidden h-4 w-px bg-slate-200 sm:block" />
+            <span className="hidden h-4 w-px bg-blue-300/40 sm:block" />
 
             <span>
-              <span className="text-lg font-bold text-blue-900">
-                {totalStok}
-              </span>{" "}
+              <span className="text-lg font-bold text-white">{totalStok}</span>{" "}
               total unit
             </span>
           </div>
